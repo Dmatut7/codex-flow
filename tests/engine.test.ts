@@ -745,6 +745,31 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("propagates writable configuration errors through topologies", async () => {
+    const dir = await tempDir();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      journalPath: path.join(dir, "journal.jsonl"),
+    });
+
+    await assert.rejects(
+      engine.run(async ({ parallel, agent }) => parallel([
+        async () => agent("missing parallel cwd", { backend: "fake", sandbox: "workspace-write" }),
+      ])),
+      /workspace-write\/danger-full-access requires opts.cwd/,
+    );
+
+    await assert.rejects(
+      engine.run(async ({ pipeline, agent }) => pipeline(["item"],
+        async () => agent("missing pipeline cwd", { backend: "fake", sandbox: "workspace-write" }),
+      )),
+      /workspace-write\/danger-full-access requires opts.cwd/,
+    );
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("rejects concurrent writable agents that share an additional directory", async () => {
     const dir = await tempDir();
     const repoA = path.join(dir, "repo-a");

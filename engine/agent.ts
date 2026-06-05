@@ -14,7 +14,14 @@ export class TimeoutError extends Error {
   }
 }
 
-export class ConcurrentWritableCwdError extends Error {
+export class WritableIsolationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WritableIsolationError";
+  }
+}
+
+export class ConcurrentWritableCwdError extends WritableIsolationError {
   constructor(cwd: string) {
     super(`Concurrent writable agent already active for cwd: ${cwd}`);
     this.name = "ConcurrentWritableCwdError";
@@ -97,7 +104,7 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
         runtime.budget.reconcile(lastUsage, estimate);
       } catch (error) {
         runtime.budget.reconcile(ZERO_USAGE, estimate);
-        if (error instanceof ConcurrentWritableCwdError) throw error;
+        if (error instanceof WritableIsolationError) throw error;
         const status = abortController.signal.aborted || error instanceof TimeoutError ? "timeout" : "failed";
         const failed = makeResult<T>(null as T, errorMessage(error), ZERO_USAGE, backend, false, threadId, "error");
         appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, status);
@@ -279,7 +286,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 export async function ensureWritableIsolation(runtime: EngineRuntime, opts: AgentOpts, key: string): Promise<string | undefined> {
   const sandbox = opts.sandbox ?? "read-only";
   if (sandbox === "read-only") return path.resolve(opts.cwd ?? process.cwd());
-  if (!opts.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
+  if (!opts.cwd) throw new WritableIsolationError("workspace-write/danger-full-access requires opts.cwd");
   return realWritableRoot(opts.cwd, "cwd");
 }
 
@@ -309,7 +316,7 @@ function cacheCwdFor(opts: AgentOpts): string | undefined {
 }
 
 function writableRoots(normalized: NormalizedAgentOpts): string[] {
-  if (!normalized.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
+  if (!normalized.cwd) throw new WritableIsolationError("workspace-write/danger-full-access requires opts.cwd");
   const roots = [
     realWritableRoot(normalized.cwd, "cwd"),
     ...(normalized.additionalDirectories ?? []).map((dir) => realWritableRoot(dir, "additionalDirectories")),
@@ -321,6 +328,6 @@ function realWritableRoot(root: string, label: string): string {
   try {
     return realpathSync.native(root);
   } catch {
-    throw new Error(`workspace-write/danger-full-access ${label} not found: ${path.resolve(root)}`);
+    throw new WritableIsolationError(`workspace-write/danger-full-access ${label} not found: ${path.resolve(root)}`);
   }
 }

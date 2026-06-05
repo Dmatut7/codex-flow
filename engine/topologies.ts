@@ -22,7 +22,7 @@ export function makeTopologies(runtime: EngineRuntime) {
           if (isErrorAgentResult(result.value)) return null;
           return result.value;
         }
-        if (isConcurrentWritableCwdError(result.reason)) throw result.reason;
+        if (isWritableIsolationError(result.reason)) throw result.reason;
         keys.push(result.key);
         return null;
       });
@@ -43,7 +43,7 @@ export function makeTopologies(runtime: EngineRuntime) {
           try {
             value = await runtime.withScope(child, () => stages[stageIdx](prev, itemCtx));
           } catch (reason) {
-            if (isConcurrentWritableCwdError(reason)) throw reason;
+            if (isWritableIsolationError(reason)) throw reason;
             return { value: null as O | null, key: child.currentPrevKey };
           }
           if (value === null || isErrorAgentResult(value)) return { value: null as O | null, key: child.currentPrevKey };
@@ -58,7 +58,7 @@ export function makeTopologies(runtime: EngineRuntime) {
           keys.push(result.value.key);
           return result.value.value;
         }
-        if (isConcurrentWritableCwdError(result.reason)) throw result.reason;
+        if (isWritableIsolationError(result.reason)) throw result.reason;
         keys.push(null);
         return null;
       });
@@ -86,6 +86,6 @@ function isErrorAgentResult(value: unknown): boolean {
   return Boolean(value && typeof value === "object" && (value as { status?: unknown }).status === "error");
 }
 
-function isConcurrentWritableCwdError(value: unknown): boolean {
-  return value instanceof Error && value.name === "ConcurrentWritableCwdError";
+function isWritableIsolationError(value: unknown): boolean {
+  return value instanceof Error && (value.name === "ConcurrentWritableCwdError" || value.name === "WritableIsolationError");
 }
