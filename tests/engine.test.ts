@@ -55,7 +55,7 @@ describe("dynamic workflow engine", () => {
     }).run(async ({ agent }) => agent("version", { backend: "fake" }));
 
     const [manifest] = await readJsonl(journalPath);
-    assert.equal(manifest.engineVersion, "0.2.0");
+    assert.equal(manifest.engineVersion, "0.2.1");
     await rm(dir, { recursive: true, force: true });
   });
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 — 2026-06-05
+
+Release-readiness hardening after the first public tag.
+
+- Preserves Claude's live progress stream work while adding engine and CLI regression fixes.
+- Fixes replay edge cases, schema keyword handling, writable-cwd collision propagation, abort forwarding, and backend thread-id namespacing.
+- Hardens `doctor`, `try`, examples, and install docs for global users and offline checks.
+- Adds Codex skill checks for dynamic workflow and business-defect-audit installs.
+
 ## 0.2.0 — 2026-06-05
 
 Initial public release as `codex-flow`.

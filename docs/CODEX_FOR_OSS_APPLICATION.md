@@ -14,7 +14,7 @@ OpenAI says the program is for maintainers of active public OSS projects with me
 ## Current readiness
 
 - Public GitHub repository.
-- Public release: https://github.com/Dmatut7/codex-flow/releases/tag/v0.2.0
+- Public release: https://github.com/Dmatut7/codex-flow/releases/tag/v0.2.1
 - MIT license.
 - Clear README with install and usage path.
 - CLI install path: `npm install -g github:Dmatut7/codex-flow` until npm OTP publish is completed.
