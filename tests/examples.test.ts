@@ -40,4 +40,45 @@ describe("example workflows", () => {
       }
     }
   });
+
+  it("business audit template rejects a failed verifier instead of returning empty results", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-business-audit-"));
+    try {
+      const file = path.resolve("codex-skill-business-audit/references/audit-template.workflow.ts");
+      const mod = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
+      const engine = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        journalPath: path.join(dir, "journal.jsonl"),
+        adapters: {
+          fake: {
+            resolver: async ({ prompt }) => {
+              if (prompt.startsWith("Reconstruct")) {
+                return {
+                  invariants: [],
+                  moneyRules: [],
+                  authzRules: [],
+                  stateTransitions: [],
+                  flows: ["checkout"],
+                  oracleQuality: "weak",
+                };
+              }
+              if (prompt.startsWith("Audit")) return { lens: "test lens", defects: [] };
+              if (prompt.startsWith("Hunt")) return { contradictions: [], unenforcedRules: [] };
+              if (prompt.startsWith("Trace")) return { flow: "checkout", weaknesses: [] };
+              if (prompt.startsWith("You are an ADVERSARIAL")) throw new Error("verify unavailable");
+              return {};
+            },
+          },
+        },
+      });
+
+      await assert.rejects(
+        () => engine.run(mod.default),
+        /business audit verify failed or was skipped/,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

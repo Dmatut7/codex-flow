@@ -1,7 +1,7 @@
 // Business-defect audit — the deep "code runs fine but violates business intent" shape.
 // 5 phases: reconstruct intent -> multi-lens fan-out -> cross-artifact contradictions ->
 // end-to-end flow trace -> adversarial verify + impact rank.
-// Import-free + null-safe (every upstream output is guarded) so it runs anywhere and under the fake backend.
+// Import-free + fail-closed (failed/skipped upstream output aborts) so it runs anywhere and under the fake backend.
 
 const BaselineSchema = {
   type: "object",
@@ -128,6 +128,20 @@ const LENSES = [
   "boundary / hostile input & trust (validation, injection, mass-assignment)",
 ];
 
+function agentOutput(result: any, label: string) {
+  if (!result || result.status !== "ok") {
+    throw new Error(`business audit ${label} failed or was skipped; inspect the journal before trusting empty results`);
+  }
+  return result.output;
+}
+
+function requiredValue(value: any, label: string) {
+  if (value === null || value === undefined) {
+    throw new Error(`business audit ${label} failed or was skipped; inspect the journal before trusting empty results`);
+  }
+  return value;
+}
+
 export default async function workflow(ctx: any) {
   const { agent, parallel, pipeline, phase, log, budget } = ctx;
 
@@ -145,12 +159,12 @@ export default async function workflow(ctx: any) {
     "Set oracleQuality honestly: 'strong' if real specs/tests exist, 'weak' if you only inferred from schemas/types, 'none' if there is no oracle (say so rather than guessing).",
     { schema: BaselineSchema, cwd: process.cwd(), sandbox: "read-only", nodeKey: "audit:baseline" },
   ));
-  const should = baseline?.output ?? null;
+  const should = agentOutput(baseline, "intent");
   log("intent baseline", { oracleQuality: should?.oracleQuality ?? "none", flows: should?.flows ?? [] });
 
   // ---- Phase 2: multi-lens fan-out (parallel), each compares code to the baseline ----
   const lensResults = await phase("lenses", async () => parallel(LENSES.map((lens) => async () => {
-    const r = await agent(
+    return agent(
       `Audit "${target}" through the "${lens}" lens.\n` +
       `Compare the ACTUAL code to these intended rules:\n${JSON.stringify(should)}\n` +
       "Find places where the code RUNS FINE but VIOLATES business intent (not crashes/null-derefs). " +
@@ -158,10 +172,9 @@ export default async function workflow(ctx: any) {
       `Set lens="${lens}". If nothing real, return an empty defects array.`,
       { schema: LensFindingSchema, cwd: process.cwd(), sandbox: "read-only", nodeKey: `audit:lens:${lens}` },
     );
-    return r.output;
   })));
-  const lensDefects = lensResults
-    .filter(Boolean)
+  const lensOutputs = lensResults.map((r: any, idx: number) => agentOutput(r, `lens ${LENSES[idx]}`));
+  const lensDefects = lensOutputs
     .flatMap((l: any) => (l?.defects ?? []).map((d: any) => ({ source: "lens", lens: l?.lens, ...d })));
   log("lens defects", { count: lensDefects.length });
 
@@ -173,7 +186,8 @@ export default async function workflow(ctx: any) {
     "Also list intended rules that have NO enforcing code. Cite locations.",
     { schema: ContradictionSchema, cwd: process.cwd(), sandbox: "read-only", nodeKey: "audit:contradictions" },
   ));
-  const contradictionDefects = (contradictions?.output?.contradictions ?? []).map((c: any) => ({
+  const contradictionOutput = agentOutput(contradictions, "contradictions");
+  const contradictionDefects = (contradictionOutput?.contradictions ?? []).map((c: any) => ({
     source: "contradiction",
     title: c?.conflict,
     location: c?.location,
@@ -189,10 +203,10 @@ export default async function workflow(ctx: any) {
       `Set flow="${flow}".`,
       { schema: FlowTraceSchema, cwd: process.cwd(), sandbox: "read-only", nodeKey: `audit:flow:${flow}` },
     );
-    return r.output;
+    return agentOutput(r, `flow ${flow}`);
   }));
-  const flowDefects = flowTraces
-    .filter(Boolean)
+  const flowOutputs = flowTraces.map((f: any, idx: number) => requiredValue(f, `flow ${flows[idx]}`));
+  const flowDefects = flowOutputs
     .flatMap((f: any) => (f?.weaknesses ?? []).map((w: any) => ({ source: "flow", flow: f?.flow, title: w?.problem, location: w?.step, kind: w?.kind })));
 
   // ---- Phase 5: adversarial verify + impact rank ----
@@ -205,13 +219,14 @@ export default async function workflow(ctx: any) {
     `CANDIDATES:\n${JSON.stringify(candidates)}\n\nINTENDED RULES:\n${JSON.stringify(should)}`,
     { schema: VerdictSchema, cwd: process.cwd(), sandbox: "read-only", nodeKey: "audit:verify" },
   ));
+  const verdictOutput = agentOutput(verdict, "verify");
 
   return {
     target,
     oracleQuality: should?.oracleQuality ?? "none",
     candidatesConsidered: candidates.length,
-    verified: verdict?.output?.verified ?? [],
-    dismissed: verdict?.output?.dismissed ?? [],
-    unenforcedRules: contradictions?.output?.unenforcedRules ?? [],
+    verified: verdictOutput?.verified ?? [],
+    dismissed: verdictOutput?.dismissed ?? [],
+    unenforcedRules: contradictionOutput?.unenforcedRules ?? [],
   };
 }
