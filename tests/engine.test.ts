@@ -760,6 +760,32 @@ console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, c
     assert.deepEqual(await runOnce(), await runOnce());
   });
 
+  it("does not let internal journal timestamps shift ctx.now across replay", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const workflow = async ({ agent, now }: any) => {
+      await agent("before now", { backend: "fake" });
+      return now();
+    };
+
+    const first = await createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      seed: 123,
+      journalPath,
+    }).run(workflow);
+    const second = await createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      seed: 123,
+      journalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("should replay"); } } },
+    }).run(workflow);
+
+    assert.equal(second, first);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("reruns a node when the journal ends with a non-terminal repair record", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

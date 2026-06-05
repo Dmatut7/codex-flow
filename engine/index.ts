@@ -106,11 +106,15 @@ class WorkflowEngine implements Engine, EngineRuntime {
 
   log(msg: string, data?: unknown): void {
     const scope = this.currentScope();
-    this.journal.appendLog({ type: "log", phase: [...scope.phase], ts: this.now(), msg, data });
+    this.journal.appendLog({ type: "log", phase: [...scope.phase], ts: this.journalNow(), msg, data });
   }
 
   now(): number {
     return this.determinism.now();
+  }
+
+  journalNow(): number {
+    return this.determinism.journalNow();
   }
 }
 

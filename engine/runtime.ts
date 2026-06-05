@@ -32,6 +32,7 @@ export interface EngineRuntime {
   normalizeOpts(opts: AgentOpts, backend: string, key: string, cacheCwd: string | undefined, schema: NormalizedSchema | undefined): Promise<NormalizedAgentOpts>;
   log(msg: string, data?: unknown): void;
   now(): number;
+  journalNow(): number;
 }
 
 export function makeScope(parent?: Scope, overrides: Partial<Scope> = {}): Scope {

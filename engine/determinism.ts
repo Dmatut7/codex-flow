@@ -12,17 +12,24 @@ export function mulberry32(seed: number): () => number {
 export class Determinism {
   private readonly rand: () => number;
   private nowValue: number;
+  private journalNowValue: number;
   private hrtimeNanoseconds: bigint;
 
   constructor(seed: number) {
     this.rand = mulberry32(seed);
     this.nowValue = seed;
+    this.journalNowValue = seed;
     this.hrtimeNanoseconds = BigInt(seed) * 1_000_000n;
   }
 
   now(): number {
     this.nowValue += 1;
     return this.nowValue;
+  }
+
+  journalNow(): number {
+    this.journalNowValue += 1;
+    return this.journalNowValue;
   }
 
   random(): number {

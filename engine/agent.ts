@@ -118,7 +118,7 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
         usage: lastUsage,
         prevKey,
         structuralPosition,
-        ts: runtime.now(),
+        ts: runtime.journalNow(),
         runningTotals: runtime.budget.totals(),
       });
       currentPrompt = buildRepairPrompt(prompt, lastRaw, parsed.errors);
@@ -184,7 +184,7 @@ function appendTerminal<T>(runtime: EngineRuntime, key: string, backend: string,
     usage: result.usage,
     prevKey,
     structuralPosition,
-    ts: runtime.now(),
+    ts: runtime.journalNow(),
     runningTotals: runtime.budget.totals(),
   });
 }
