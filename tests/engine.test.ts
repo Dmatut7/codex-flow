@@ -392,6 +392,12 @@ describe("dynamic workflow engine", () => {
 
     assertRejectsExtraPayload({ oneOf: [{ type: "object", properties: { role: { type: "string" } } }] });
     assertRejectsExtraPayload({ allOf: [{ type: "object", properties: { role: { type: "string" } } }] });
+    assertRejectsExtraPayload({ oneOf: [{ properties: { role: { type: "string" } } }] });
+    assertRejectsExtraPayload({ $ref: "#/$defs/PayloadWithoutType" }, {
+      $defs: {
+        PayloadWithoutType: { properties: { role: { type: "string" } } },
+      },
+    });
     assertRejectsExtraPayload({ $ref: "#/$defs/Payload" }, {
       $defs: {
         Payload: { type: "object", properties: { role: { type: "string" } } },

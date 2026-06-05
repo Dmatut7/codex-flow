@@ -95,7 +95,9 @@ function visit(node: any, depth: number, stats: { properties: number; enumValues
   const out = clone(node);
   if (Array.isArray(out.enum)) stats.enumValues += out.enum.length;
   const types = Array.isArray(out.type) ? out.type : [out.type];
-  if (types.includes("object")) {
+  const hasObjectProperties = out.properties && typeof out.properties === "object" && !Array.isArray(out.properties);
+  if (types.includes("object") || (out.type === undefined && hasObjectProperties)) {
+    if (out.type === undefined) out.type = "object";
     out.properties = out.properties ?? {};
     const keys = Object.keys(out.properties);
     stats.properties += keys.length;
