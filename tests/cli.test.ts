@@ -71,6 +71,15 @@ describe("codex-flow cli", () => {
     assert.ok(tsconfig.include?.includes("cli/**/*.ts"), "tsconfig include should cover cli/**/*.ts");
   });
 
+  it("release workflow is configured for npm trusted publishing", async () => {
+    const workflow = await readFile(path.join(repoRoot, ".github", "workflows", "publish.yml"), "utf8");
+
+    assert.match(workflow, /on:\s*\n\s+push:\s*\n\s+tags:\s*\n\s+- ['"]v\*['"]/);
+    assert.match(workflow, /id-token:\s*write/);
+    assert.match(workflow, /npm publish --access public/);
+    assert.doesNotMatch(workflow, /NODE_AUTH_TOKEN|NPM_TOKEN|_authToken/);
+  });
+
   it("smoke tells codex-sdk users to use membership login instead of an API key", () => {
     const hint = unavailableHint("codex-sdk");
     assert.match(hint, /Codex membership/i);

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added GitHub Actions npm Trusted Publishing workflow so tagged releases can publish without local npm tokens or OTP.
+
 ## 0.2.4 — 2026-06-05
 
 - Added the `parallel-fix` Codex skill and example workflow for proposing independent fixes concurrently, then integrating and verifying serially.
