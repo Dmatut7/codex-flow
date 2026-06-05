@@ -1,6 +1,6 @@
 {
   "defaultBackend": "codex-sdk",
-  "autoRoute": true,
+  "autoRoute": false,
   "concurrency": 4,
   "seed": 123456,
   "estimatedTokensPerCall": 1000,
