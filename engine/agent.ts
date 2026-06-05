@@ -70,66 +70,78 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
   let lastUsage: Usage = ZERO_USAGE;
   let lastRaw = "";
   let threadId: string | undefined;
+  let releaseWritable = () => {};
+  let writableRegistered = false;
 
-  for (let attempt = 0; attempt <= maxRepair; attempt++) {
-    const estimate = runtime.config.estimatedTokensPerCall;
-    runtime.budget.reserve(estimate);
-    const abortController = new AbortController();
-    const timeoutMs = opts.timeoutMs ?? runtime.config.timeoutMs;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const abortFromOuter = () => abortController.abort(opts.signal?.reason);
-    opts.signal?.addEventListener("abort", abortFromOuter, { once: true });
-    if (timeoutMs) timer = setTimeout(() => abortController.abort(new TimeoutError()), timeoutMs);
-    try {
-      const adapterResult = await runAdapterWithTransientRetry(runtime, adapter, currentPrompt, normalized, abortController.signal, key);
-      lastUsage = adapterResult.usage;
-      lastRaw = adapterResult.finalResponse;
-      threadId = namespaceThreadId(backend, adapterResult.threadId);
-      runtime.budget.reconcile(lastUsage, estimate);
-    } catch (error) {
-      runtime.budget.reconcile(ZERO_USAGE, estimate);
-      if (error instanceof ConcurrentWritableCwdError) throw error;
-      const status = abortController.signal.aborted || error instanceof TimeoutError ? "timeout" : "failed";
-      const failed = makeResult<T>(null as T, errorMessage(error), ZERO_USAGE, backend, false, threadId, "error");
-      appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, status);
+  const ensureWritableRegistered = () => {
+    if (writableRegistered) return;
+    releaseWritable = registerWritableCwd(runtime, normalized);
+    writableRegistered = true;
+  };
+
+  try {
+    for (let attempt = 0; attempt <= maxRepair; attempt++) {
+      const estimate = runtime.config.estimatedTokensPerCall;
+      runtime.budget.reserve(estimate);
+      const abortController = new AbortController();
+      const timeoutMs = opts.timeoutMs ?? runtime.config.timeoutMs;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const abortFromOuter = () => abortController.abort(opts.signal?.reason);
+      opts.signal?.addEventListener("abort", abortFromOuter, { once: true });
+      if (timeoutMs) timer = setTimeout(() => abortController.abort(new TimeoutError()), timeoutMs);
+      try {
+        const adapterResult = await runAdapterWithTransientRetry(runtime, adapter, currentPrompt, normalized, abortController.signal, key, ensureWritableRegistered);
+        lastUsage = adapterResult.usage;
+        lastRaw = adapterResult.finalResponse;
+        threadId = namespaceThreadId(backend, adapterResult.threadId);
+        runtime.budget.reconcile(lastUsage, estimate);
+      } catch (error) {
+        runtime.budget.reconcile(ZERO_USAGE, estimate);
+        if (error instanceof ConcurrentWritableCwdError) throw error;
+        const status = abortController.signal.aborted || error instanceof TimeoutError ? "timeout" : "failed";
+        const failed = makeResult<T>(null as T, errorMessage(error), ZERO_USAGE, backend, false, threadId, "error");
+        appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, status);
+        scope.currentPrevKey = key;
+        return failed;
+      } finally {
+        if (timer) clearTimeout(timer);
+        opts.signal?.removeEventListener("abort", abortFromOuter);
+      }
+
+      const parsed = parseAndValidate(lastRaw, schema);
+      if (parsed.ok) {
+        const ok = makeResult<T>(parsed.output as T, lastRaw, lastUsage, backend, false, threadId, "ok");
+        appendTerminal(runtime, key, backend, structuralPosition, prevKey, ok, "terminal");
+        scope.currentPrevKey = key;
+        return ok;
+      }
+
+      if (attempt < maxRepair) {
+        runtime.journal.appendNode({
+          type: "node",
+          key,
+          backend,
+          threadId,
+          status: "repair",
+          attempt: attempt + 1,
+          raw: lastRaw,
+          usage: lastUsage,
+          prevKey,
+          structuralPosition,
+          ts: runtime.journalNow(),
+          runningTotals: runtime.budget.totals(),
+        });
+        currentPrompt = buildRepairPrompt(prompt, lastRaw, parsed.errors);
+        continue;
+      }
+
+      const failed = makeResult<T>(null as T, lastRaw, lastUsage, backend, false, threadId, "error");
+      appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, "terminal");
       scope.currentPrevKey = key;
       return failed;
-    } finally {
-      if (timer) clearTimeout(timer);
-      opts.signal?.removeEventListener("abort", abortFromOuter);
     }
-
-    const parsed = parseAndValidate(lastRaw, schema);
-    if (parsed.ok) {
-      const ok = makeResult<T>(parsed.output as T, lastRaw, lastUsage, backend, false, threadId, "ok");
-      appendTerminal(runtime, key, backend, structuralPosition, prevKey, ok, "terminal");
-      scope.currentPrevKey = key;
-      return ok;
-    }
-
-    if (attempt < maxRepair) {
-      runtime.journal.appendNode({
-        type: "node",
-        key,
-        backend,
-        threadId,
-        status: "repair",
-        attempt: attempt + 1,
-        raw: lastRaw,
-        usage: lastUsage,
-        prevKey,
-        structuralPosition,
-        ts: runtime.journalNow(),
-        runningTotals: runtime.budget.totals(),
-      });
-      currentPrompt = buildRepairPrompt(prompt, lastRaw, parsed.errors);
-      continue;
-    }
-
-    const failed = makeResult<T>(null as T, lastRaw, lastUsage, backend, false, threadId, "error");
-    appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, "terminal");
-    scope.currentPrevKey = key;
-    return failed;
+  } finally {
+    releaseWritable();
   }
   throw new Error("unreachable agent loop");
 }
@@ -198,15 +210,15 @@ async function runAdapterWithTransientRetry(
   normalized: NormalizedAgentOpts,
   signal: AbortSignal,
   cacheKey: string,
+  ensureWritableRegistered: () => void,
 ): Promise<AdapterResult> {
   const maxRetries = runtime.config.transientRetries ?? 3;
   const baseMs = runtime.config.transientBaseMs ?? 500;
   for (let retry = 0; ; retry++) {
     const release = await runtime.semaphore.acquire(signal);
-    let releaseWritable = () => {};
     try {
       if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new TimeoutError("agent call aborted");
-      releaseWritable = registerWritableCwd(runtime, normalized);
+      ensureWritableRegistered();
       return await adapter.run(prompt, normalized, {
         signal,
         log: (msg, data) => runtime.log(msg, data),
@@ -214,7 +226,6 @@ async function runAdapterWithTransientRetry(
     } catch (error) {
       if (signal.aborted || error instanceof TimeoutError || !isTransient(error) || retry >= maxRetries) throw error;
     } finally {
-      releaseWritable();
       release();
     }
     await sleep(transientDelayMs(baseMs, retry, cacheKey), signal);

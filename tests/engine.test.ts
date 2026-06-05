@@ -673,6 +673,48 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("keeps writable cwd locked across transient retry backoff", async () => {
+    const dir = await tempDir();
+    const realCwd = path.join(dir, "repo");
+    await mkdir(realCwd, { recursive: true });
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    let firstAttempts = 0;
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      transientBaseMs: 50,
+      transientRetries: 1,
+      journalPath: path.join(dir, "journal.jsonl"),
+      adapters: {
+        fake: {
+          resolver: async ({ prompt }) => {
+            if (prompt === "first" && firstAttempts++ === 0) throw { status: 429, message: "rate limit" };
+            return { ok: true };
+          },
+        },
+      },
+    });
+
+    await assert.rejects(
+      engine.run(async ({ parallel, agent }) => parallel([
+        async () => agent("first", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" }),
+        async () => {
+          await delay(10);
+          return agent("second", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" });
+        },
+      ])),
+      ConcurrentWritableCwdError,
+    );
+    const after = await engine.run(async ({ agent }) => agent("after retry collision", {
+      backend: "fake",
+      cwd: realCwd,
+      sandbox: "workspace-write",
+    }));
+    assert.deepEqual(after.output, { ok: true });
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("propagates writable cwd collisions through parallel instead of bulkheading them", async () => {
     const dir = await tempDir();
     const realCwd = path.join(dir, "repo");
