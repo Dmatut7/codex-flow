@@ -21,6 +21,7 @@ export interface EngineRuntime {
   adapters: Record<string, AgentAdapter>;
   journal: Journal;
   semaphore: Semaphore;
+  activeWritableCwds: Set<string>;
   budget: WorkflowBudget;
   scopeStorage: AsyncLocalStorage<Scope>;
   currentScope(): Scope;

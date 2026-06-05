@@ -22,6 +22,7 @@ class WorkflowEngine implements Engine, EngineRuntime {
   readonly adapters: Record<string, AgentAdapter>;
   readonly journal: Journal;
   readonly semaphore: Semaphore;
+  readonly activeWritableCwds = new Set<string>();
   readonly scopeStorage = new AsyncLocalStorage<Scope>();
   readonly determinism: Determinism;
   readonly budget: WorkflowBudget;

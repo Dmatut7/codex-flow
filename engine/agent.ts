@@ -1,5 +1,4 @@
 import path from "node:path";
-import { mkdir } from "node:fs/promises";
 import type { AgentOpts, AgentResult, StructuralPosition, Usage } from "./types.ts";
 import { ZERO_USAGE } from "./types.ts";
 import type { EngineRuntime, Scope } from "./runtime.ts";
@@ -11,6 +10,13 @@ export class TimeoutError extends Error {
   constructor(message = "agent call timed out") {
     super(message);
     this.name = "TimeoutError";
+  }
+}
+
+export class ConcurrentWritableCwdError extends Error {
+  constructor(cwd: string) {
+    super(`Concurrent writable agent already active for cwd: ${cwd}`);
+    this.name = "ConcurrentWritableCwdError";
   }
 }
 
@@ -76,6 +82,7 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
       runtime.budget.reconcile(lastUsage, estimate);
     } catch (error) {
       runtime.budget.reconcile(ZERO_USAGE, estimate);
+      if (error instanceof ConcurrentWritableCwdError) throw error;
       const status = abortController.signal.aborted || error instanceof TimeoutError ? "timeout" : "failed";
       const failed = makeResult<T>(null as T, "", ZERO_USAGE, backend, false, threadId, "error");
       appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, status);
@@ -166,7 +173,9 @@ async function runAdapterWithTransientRetry(
   const baseMs = runtime.config.transientBaseMs ?? 500;
   for (let retry = 0; ; retry++) {
     const release = await runtime.semaphore.acquire();
+    let releaseWritable = () => {};
     try {
+      releaseWritable = registerWritableCwd(runtime, normalized);
       return await adapter.run(prompt, normalized, {
         signal,
         log: (msg, data) => runtime.log(msg, data),
@@ -174,6 +183,7 @@ async function runAdapterWithTransientRetry(
     } catch (error) {
       if (signal.aborted || error instanceof TimeoutError || !isTransient(error) || retry >= maxRetries) throw error;
     } finally {
+      releaseWritable();
       release();
     }
     await sleep(transientDelayMs(baseMs, retry, cacheKey), signal);
@@ -227,8 +237,17 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 export async function ensureWritableIsolation(runtime: EngineRuntime, opts: AgentOpts, key: string): Promise<string | undefined> {
   const sandbox = opts.sandbox ?? "read-only";
   if (sandbox === "read-only") return opts.cwd ? path.resolve(opts.cwd) : undefined;
-  const base = runtime.config.scratchRoot ?? path.join(process.cwd(), ".codex-workflow", "scratch");
-  const dir = path.join(base, key.slice(0, 16));
-  await mkdir(dir, { recursive: true });
-  return dir;
+  if (!opts.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
+  return path.resolve(opts.cwd);
+}
+
+function registerWritableCwd(runtime: EngineRuntime, normalized: NormalizedAgentOpts): () => void {
+  if (normalized.sandbox === "read-only") return () => {};
+  if (!normalized.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
+  const cwd = path.resolve(normalized.cwd);
+  if (runtime.activeWritableCwds.has(cwd)) throw new ConcurrentWritableCwdError(cwd);
+  runtime.activeWritableCwds.add(cwd);
+  return () => {
+    runtime.activeWritableCwds.delete(cwd);
+  };
 }

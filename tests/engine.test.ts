@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { createEngine } from "../engine/index.ts";
-import { TimeoutError } from "../engine/agent.ts";
+import { ConcurrentWritableCwdError, TimeoutError } from "../engine/agent.ts";
 
 async function tempDir(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "codex-workflow-test-"));
@@ -208,6 +208,113 @@ describe("dynamic workflow engine", () => {
     assert.equal(timeoutEngine.adapters.fake.calls.length, 1);
     const timeoutRecords = (await readJsonl(timeoutJournalPath)).filter((line) => line.type === "node");
     assert.deepEqual(timeoutRecords.map((record) => record.status), ["timeout"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("uses the real cwd for workspace-write nodes", async () => {
+    const dir = await tempDir();
+    const realCwd = path.join(dir, "repo");
+    const journalPath = path.join(dir, "journal.jsonl");
+    let seenCwd = "";
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: {
+        fake: {
+          resolver: async ({ opts }) => {
+            seenCwd = opts.cwd ?? "";
+            return { ok: true };
+          },
+        },
+      },
+    });
+
+    const result = await engine.run(async ({ agent }) => agent("write in repo", {
+      backend: "fake",
+      cwd: realCwd,
+      sandbox: "workspace-write",
+    }));
+
+    assert.deepEqual(result.output, { ok: true });
+    assert.equal(seenCwd, path.resolve(realCwd));
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("rejects concurrent writable agents using the same cwd and releases the registry", async () => {
+    const dir = await tempDir();
+    const realCwd = path.join(dir, "repo");
+    const journalPath = path.join(dir, "journal.jsonl");
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      journalPath,
+      adapters: {
+        fake: {
+          resolver: async () => {
+            await delay(80);
+            return { ok: true };
+          },
+        },
+      },
+    });
+
+    await assert.rejects(
+      engine.run(async ({ agent }) => Promise.all([
+        agent("first", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" }),
+        agent("second", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" }),
+      ])),
+      ConcurrentWritableCwdError,
+    );
+    await delay(100);
+
+    const after = await engine.run(async ({ agent }) => agent("after", {
+      backend: "fake",
+      cwd: realCwd,
+      sandbox: "workspace-write",
+    }));
+    assert.deepEqual(after.output, { ok: true });
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("allows concurrent writable agents with different cwd and requires cwd for writable sandboxes", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const a = path.join(dir, "repo-a");
+    const b = path.join(dir, "repo-b");
+    const seen = new Set<string>();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      journalPath,
+      adapters: {
+        fake: {
+          resolver: async ({ opts }) => {
+            seen.add(opts.cwd ?? "");
+            return { cwd: opts.cwd };
+          },
+        },
+      },
+    });
+
+    const results = await engine.run(async ({ parallel, agent }) => parallel([
+      async () => (await agent("a", { backend: "fake", cwd: a, sandbox: "workspace-write" })).output,
+      async () => (await agent("b", { backend: "fake", cwd: b, sandbox: "workspace-write" })).output,
+    ]));
+
+    assert.deepEqual(results, [{ cwd: path.resolve(a) }, { cwd: path.resolve(b) }]);
+    assert.deepEqual([...seen].sort(), [path.resolve(a), path.resolve(b)].sort());
+
+    await assert.rejects(
+      engine.run(async ({ agent }) => agent("missing cwd", {
+        backend: "fake",
+        sandbox: "workspace-write",
+      })),
+      /workspace-write\/danger-full-access requires opts.cwd/,
+    );
     await rm(dir, { recursive: true, force: true });
   });
 
