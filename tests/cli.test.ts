@@ -44,4 +44,20 @@ describe("codex-flow cli", () => {
     assert.match(res.stdout, /"prompt": "hi"/);
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("doctor checks the local fake backend and reports missing skill without failing", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-doctor-"));
+    const res = spawnSync("node", [binPath, "doctor", "--json"], {
+      encoding: "utf8",
+      env: { ...process.env, CODEX_HOME: dir },
+    });
+    assert.equal(res.status, 0, res.stderr);
+    const body = JSON.parse(res.stdout);
+    const fake = body.checks.find((check: any) => check.name === "fake backend");
+    const skill = body.checks.find((check: any) => check.name === "codex skill");
+    assert.equal(fake.status, "ok");
+    assert.equal(skill.status, "warn");
+    assert.match(skill.next, /codex-flow install-codex/);
+    await rm(dir, { recursive: true, force: true });
+  });
 });

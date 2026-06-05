@@ -65,7 +65,9 @@ Dynamic workflow orchestration for Codex: parallel, resumable, journaled sub-age
 
 ```bash
 npm install -g github:Dmatut7/codex-flow
+codex-flow doctor
 codex-flow install-codex
+codex-flow doctor
 ```
 
 2. Restart Codex.

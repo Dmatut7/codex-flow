@@ -8,6 +8,7 @@ After installing the bundled Codex skill:
 
 ```bash
 codex-flow install-codex
+codex-flow doctor
 ```
 
 Restart Codex, open any project, and say:
