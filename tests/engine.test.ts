@@ -493,6 +493,36 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("propagates writable cwd collisions through parallel instead of bulkheading them", async () => {
+    const dir = await tempDir();
+    const realCwd = path.join(dir, "repo");
+    await mkdir(realCwd, { recursive: true });
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      journalPath: path.join(dir, "journal.jsonl"),
+      adapters: {
+        fake: {
+          resolver: async () => {
+            await delay(80);
+            return { ok: true };
+          },
+        },
+      },
+    });
+
+    await assert.rejects(
+      engine.run(async ({ parallel, agent }) => parallel([
+        async () => agent("first", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" }),
+        async () => agent("second", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" }),
+      ])),
+      ConcurrentWritableCwdError,
+    );
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("allows concurrent writable agents with different cwd and requires cwd for writable sandboxes", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

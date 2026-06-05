@@ -18,6 +18,7 @@ export function makeTopologies(runtime: EngineRuntime) {
           if (isErrorAgentResult(result.value.value)) return null;
           return result.value.value;
         }
+        if (isConcurrentWritableCwdError(result.reason)) throw result.reason;
         keys.push(null);
         return null;
       });
@@ -47,6 +48,7 @@ export function makeTopologies(runtime: EngineRuntime) {
           keys.push(result.value.key);
           return result.value.value;
         }
+        if (isConcurrentWritableCwdError(result.reason)) throw result.reason;
         keys.push(null);
         return null;
       });
@@ -66,4 +68,8 @@ export function makeTopologies(runtime: EngineRuntime) {
 
 function isErrorAgentResult(value: unknown): boolean {
   return Boolean(value && typeof value === "object" && (value as { status?: unknown }).status === "error");
+}
+
+function isConcurrentWritableCwdError(value: unknown): boolean {
+  return value instanceof Error && value.name === "ConcurrentWritableCwdError";
 }
