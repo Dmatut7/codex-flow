@@ -7,6 +7,7 @@ const UNSUPPORTED_FOR_MODEL = new Set(["minLength", "maxLength", "minimum", "max
 export function normalizeSchema(schema: unknown): NormalizedSchema | undefined {
   if (!schema) return undefined;
   const validationSchema = enforceStrictSchema(toJsonSchema(schema));
+  rejectUnsupportedValidationKeywords(validationSchema);
   const adapterSchema = stripUnsupportedKeywords(validationSchema);
   const AjvCtor: any = (AjvModule as any).default ?? AjvModule;
   const ajv = new AjvCtor({ allErrors: true, strict: false });
@@ -115,15 +116,40 @@ function visit(node: any, depth: number, stats: { properties: number; enumValues
   return out;
 }
 
-function stripUnsupportedKeywords(schema: any): any {
+function stripUnsupportedKeywords(schema: any, parentKey?: string): any {
   if (!schema || typeof schema !== "object") return schema;
-  if (Array.isArray(schema)) return schema.map(stripUnsupportedKeywords);
+  if (Array.isArray(schema)) return schema.map((item) => stripUnsupportedKeywords(item, parentKey));
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema)) {
-    if (UNSUPPORTED_FOR_MODEL.has(key)) continue;
-    out[key] = stripUnsupportedKeywords(value);
+    const isMapEntry = parentKey === "properties" || parentKey === "$defs" || parentKey === "definitions";
+    if (!isMapEntry && UNSUPPORTED_FOR_MODEL.has(key)) continue;
+    out[key] = stripUnsupportedKeywords(value, key);
   }
   return out;
+}
+
+function rejectUnsupportedValidationKeywords(schema: any): void {
+  visitSchemaNodes(schema, (node) => {
+    if (Object.prototype.hasOwnProperty.call(node, "format")) {
+      throw new Error("unsupported schema keyword for local validation: format");
+    }
+  });
+}
+
+function visitSchemaNodes(node: any, fn: (schemaNode: any) => void): void {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const child of node) visitSchemaNodes(child, fn);
+    return;
+  }
+  fn(node);
+  for (const [key, value] of Object.entries(node)) {
+    if ((key === "properties" || key === "$defs" || key === "definitions") && value && typeof value === "object" && !Array.isArray(value)) {
+      for (const child of Object.values(value)) visitSchemaNodes(child, fn);
+      continue;
+    }
+    visitSchemaNodes(value, fn);
+  }
 }
 
 function clone<T>(value: T): T {

@@ -245,6 +245,31 @@ describe("dynamic workflow engine", () => {
     });
   });
 
+  it("preserves property names that match unsupported adapter keywords", () => {
+    const schema = normalizeSchema({
+      type: "object",
+      properties: {
+        format: { type: "string" },
+        pattern: { type: "string" },
+      },
+    });
+
+    assert.deepEqual(Object.keys(schema!.adapterSchema.properties), ["format", "pattern"]);
+    assert.equal(parseAndValidate('{"format":"json","pattern":"literal"}', schema).ok, true);
+  });
+
+  it("rejects unsupported format constraints instead of silently ignoring them", () => {
+    assert.throws(
+      () => normalizeSchema({
+        type: "object",
+        properties: {
+          email: { type: "string", format: "email" },
+        },
+      }),
+      /unsupported schema keyword.*format/i,
+    );
+  });
+
   it("default fake backend returns schema-shaped output", async () => {
     const dir = await tempDir();
     const engine = createEngine({
