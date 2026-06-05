@@ -6,6 +6,7 @@ import path from "node:path";
 import { z } from "zod";
 import { createEngine } from "../engine/index.ts";
 import { ConcurrentWritableCwdError, TimeoutError } from "../engine/agent.ts";
+import { normalizeSchema, parseAndValidate } from "../engine/schema.ts";
 import { resolveBackend } from "../adapters/registry.ts";
 
 async function tempDir(): Promise<string> {
@@ -215,6 +216,32 @@ describe("dynamic workflow engine", () => {
     assert.deepEqual(records.map((record) => record.status), ["repair", "terminal"]);
     assert.equal(new Set(records.map((record) => record.key)).size, 1);
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it("enforces strict object schemas inside combinators and definitions", () => {
+    const assertRejectsExtraPayload = (payloadSchema: any, extraRoot: Record<string, unknown> = {}) => {
+      const schema = normalizeSchema({
+        type: "object",
+        additionalProperties: false,
+        required: ["payload"],
+        properties: {
+          payload: payloadSchema,
+        },
+        ...extraRoot,
+      });
+
+      const result = parseAndValidate(JSON.stringify({ payload: { role: "admin", injected: true } }), schema);
+
+      assert.equal(result.ok, false);
+    };
+
+    assertRejectsExtraPayload({ oneOf: [{ type: "object", properties: { role: { type: "string" } } }] });
+    assertRejectsExtraPayload({ allOf: [{ type: "object", properties: { role: { type: "string" } } }] });
+    assertRejectsExtraPayload({ $ref: "#/$defs/Payload" }, {
+      $defs: {
+        Payload: { type: "object", properties: { role: { type: "string" } } },
+      },
+    });
   });
 
   it("default fake backend returns schema-shaped output", async () => {

@@ -104,6 +104,14 @@ function visit(node: any, depth: number, stats: { properties: number; enumValues
   }
   if (out.items) out.items = visit(out.items, depth + 1, stats);
   if (Array.isArray(out.anyOf)) out.anyOf = out.anyOf.map((child: any) => visit(child, depth + 1, stats));
+  if (Array.isArray(out.oneOf)) out.oneOf = out.oneOf.map((child: any) => visit(child, depth + 1, stats));
+  if (Array.isArray(out.allOf)) out.allOf = out.allOf.map((child: any) => visit(child, depth + 1, stats));
+  if (out.$defs && typeof out.$defs === "object") {
+    for (const key of Object.keys(out.$defs)) out.$defs[key] = visit(out.$defs[key], depth + 1, stats);
+  }
+  if (out.definitions && typeof out.definitions === "object") {
+    for (const key of Object.keys(out.definitions)) out.definitions[key] = visit(out.definitions[key], depth + 1, stats);
+  }
   return out;
 }
 
