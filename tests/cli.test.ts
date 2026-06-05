@@ -5,12 +5,25 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { installCodex } from "../cli/install-codex.ts";
 
 const binPath = fileURLToPath(new URL("../bin/codex-flow.mjs", import.meta.url));
+const rootExportUrl = pathToFileURL(fileURLToPath(new URL("../index.mjs", import.meta.url))).href;
 
 describe("codex-flow cli", () => {
+  it("root package export works from plain node", () => {
+    const code = `
+      const m = await import(${JSON.stringify(rootExportUrl)});
+      const engine = m.createEngine({ defaultBackend: "fake", autoRoute: false });
+      const result = await engine.run(async ({ agent }) => (await agent("root export", { backend: "fake" })).output);
+      console.log(JSON.stringify(result));
+    `;
+    const res = spawnSync("node", ["--input-type=module", "-e", code], { encoding: "utf8" });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /"prompt":"root export"/);
+  });
+
   it("install-codex copies the skill into the target dir", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-cli-"));
     await installCodex(["--dir", dir]);

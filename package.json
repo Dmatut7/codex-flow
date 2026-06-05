@@ -30,9 +30,10 @@
     "dongt": "bin/codex-flow.mjs"
   },
   "exports": {
-    ".": "./engine/index.ts"
+    ".": "./index.mjs"
   },
   "files": [
+    "index.mjs",
     "bin",
     "cli",
     "engine",

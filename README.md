@@ -110,6 +110,20 @@ Key `agent` opts: `schema` (Zod or JSON Schema → strict JSON output), `sandbox
 
 Use `ctx.now()` / `ctx.random()` for control flow — never wall-clock or ambient RNG to decide which nodes exist.
 
+## Programmatic use (optional)
+
+The project is CLI-first, but the package also exports the engine:
+
+```js
+import { createEngine } from "codex-flow";
+
+const engine = createEngine({ defaultBackend: "fake", autoRoute: false });
+const result = await engine.run(async ({ agent }) =>
+  (await agent("hello", { backend: "fake" })).output
+);
+console.log(result);
+```
+
 ## Backends and routing
 
 - `codex-sdk` (default): in-process Codex SDK thread, uses your membership login.
