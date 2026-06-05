@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
@@ -279,6 +279,7 @@ describe("dynamic workflow engine", () => {
   it("uses the real cwd for workspace-write nodes", async () => {
     const dir = await tempDir();
     const realCwd = path.join(dir, "repo");
+    await mkdir(realCwd, { recursive: true });
     const journalPath = path.join(dir, "journal.jsonl");
     let seenCwd = "";
     const engine = createEngine({
@@ -302,13 +303,14 @@ describe("dynamic workflow engine", () => {
     }));
 
     assert.deepEqual(result.output, { ok: true });
-    assert.equal(seenCwd, path.resolve(realCwd));
+    assert.equal(seenCwd, await realpath(realCwd));
     await rm(dir, { recursive: true, force: true });
   });
 
   it("rejects concurrent writable agents using the same cwd and releases the registry", async () => {
     const dir = await tempDir();
     const realCwd = path.join(dir, "repo");
+    await mkdir(realCwd, { recursive: true });
     const journalPath = path.join(dir, "journal.jsonl");
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const engine = createEngine({
@@ -349,6 +351,8 @@ describe("dynamic workflow engine", () => {
     const journalPath = path.join(dir, "journal.jsonl");
     const a = path.join(dir, "repo-a");
     const b = path.join(dir, "repo-b");
+    await mkdir(a, { recursive: true });
+    await mkdir(b, { recursive: true });
     const seen = new Set<string>();
     const engine = createEngine({
       defaultBackend: "fake",
@@ -370,8 +374,8 @@ describe("dynamic workflow engine", () => {
       async () => (await agent("b", { backend: "fake", cwd: b, sandbox: "workspace-write" })).output,
     ]));
 
-    assert.deepEqual(results, [{ cwd: path.resolve(a) }, { cwd: path.resolve(b) }]);
-    assert.deepEqual([...seen].sort(), [path.resolve(a), path.resolve(b)].sort());
+    assert.deepEqual(results, [{ cwd: await realpath(a) }, { cwd: await realpath(b) }]);
+    assert.deepEqual([...seen].sort(), [await realpath(a), await realpath(b)].sort());
 
     await assert.rejects(
       engine.run(async ({ agent }) => agent("missing cwd", {
@@ -379,6 +383,38 @@ describe("dynamic workflow engine", () => {
         sandbox: "workspace-write",
       })),
       /workspace-write\/danger-full-access requires opts.cwd/,
+    );
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("rejects concurrent writable agents using symlink aliases for the same cwd", async () => {
+    const dir = await tempDir();
+    const realCwd = path.join(dir, "repo");
+    const aliasCwd = path.join(dir, "repo-link");
+    await mkdir(realCwd, { recursive: true });
+    await symlink(realCwd, aliasCwd, "dir");
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      journalPath: path.join(dir, "journal.jsonl"),
+      adapters: {
+        fake: {
+          resolver: async () => {
+            await delay(80);
+            return { ok: true };
+          },
+        },
+      },
+    });
+
+    await assert.rejects(
+      engine.run(async ({ agent }) => Promise.all([
+        agent("real", { backend: "fake", cwd: realCwd, sandbox: "workspace-write" }),
+        agent("alias", { backend: "fake", cwd: aliasCwd, sandbox: "workspace-write" }),
+      ])),
+      ConcurrentWritableCwdError,
     );
     await rm(dir, { recursive: true, force: true });
   });

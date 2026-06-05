@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import path from "node:path";
 import type { AgentOpts, AgentResult, StructuralPosition, Usage } from "./types.ts";
 import { ZERO_USAGE } from "./types.ts";
@@ -25,7 +26,7 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
   const structuralPosition = allocateStructuralPosition(scope, opts.nodeKey);
   const schema = normalizeSchema(opts.schema);
   const backendInitial = runtime.resolveBackend(opts);
-  const cacheCwd = opts.cwd ? path.resolve(opts.cwd) : undefined;
+  const cacheCwd = cacheCwdFor(opts);
   const cacheAdditionalDirectories = opts.additionalDirectories?.map((dir) => path.resolve(dir)).sort();
   const sandbox = opts.sandbox ?? "read-only";
   const prevKey = scope.currentPrevKey ?? null;
@@ -242,16 +243,30 @@ export async function ensureWritableIsolation(runtime: EngineRuntime, opts: Agen
   const sandbox = opts.sandbox ?? "read-only";
   if (sandbox === "read-only") return opts.cwd ? path.resolve(opts.cwd) : undefined;
   if (!opts.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
-  return path.resolve(opts.cwd);
+  return realWritableCwd(opts.cwd);
 }
 
 function registerWritableCwd(runtime: EngineRuntime, normalized: NormalizedAgentOpts): () => void {
   if (normalized.sandbox === "read-only") return () => {};
   if (!normalized.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
-  const cwd = path.resolve(normalized.cwd);
+  const cwd = realWritableCwd(normalized.cwd);
   if (runtime.activeWritableCwds.has(cwd)) throw new ConcurrentWritableCwdError(cwd);
   runtime.activeWritableCwds.add(cwd);
   return () => {
     runtime.activeWritableCwds.delete(cwd);
   };
+}
+
+function cacheCwdFor(opts: AgentOpts): string | undefined {
+  if (!opts.cwd) return undefined;
+  if ((opts.sandbox ?? "read-only") === "read-only") return path.resolve(opts.cwd);
+  return realWritableCwd(opts.cwd);
+}
+
+function realWritableCwd(cwd: string): string {
+  try {
+    return realpathSync.native(cwd);
+  } catch {
+    throw new Error(`workspace-write/danger-full-access cwd not found: ${path.resolve(cwd)}`);
+  }
 }
