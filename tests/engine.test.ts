@@ -137,6 +137,80 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("keeps completed child keys from thrown parallel branches in downstream dependencies", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const calls: string[] = [];
+    const workflow = (innerPrompt: string) => async ({ parallel, agent }: any) => {
+      await parallel([
+        async () => {
+          await agent(innerPrompt, { backend: "fake" });
+          throw new Error("branch failed after agent");
+        },
+      ]);
+      return agent("after parallel", { backend: "fake" });
+    };
+
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async ({ prompt }) => { calls.push(`first:${prompt}`); return { prompt, run: 1 }; } } },
+    });
+    const firstResult = await first.run(workflow("inner-v1"));
+
+    assert.deepEqual(firstResult.output, { prompt: "after parallel", run: 1 });
+
+    const second = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async ({ prompt }) => { calls.push(`second:${prompt}`); return { prompt, run: 2 }; } } },
+    });
+    const secondResult = await second.run(workflow("inner-v2"));
+
+    assert.equal(secondResult.replayed, false);
+    assert.deepEqual(secondResult.output, { prompt: "after parallel", run: 2 });
+    assert.deepEqual(calls, ["first:inner-v1", "first:after parallel", "second:inner-v2", "second:after parallel"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("keeps completed child keys from thrown pipeline stages in downstream dependencies", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const calls: string[] = [];
+    const workflow = (innerPrompt: string) => async ({ pipeline, agent }: any) => {
+      await pipeline(["item"], async () => {
+        await agent(innerPrompt, { backend: "fake" });
+        throw new Error("stage failed after agent");
+      });
+      return agent("after pipeline", { backend: "fake" });
+    };
+
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async ({ prompt }) => { calls.push(`first:${prompt}`); return { prompt, run: 1 }; } } },
+    });
+    const firstResult = await first.run(workflow("stage-v1"));
+
+    assert.deepEqual(firstResult.output, { prompt: "after pipeline", run: 1 });
+
+    const second = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async ({ prompt }) => { calls.push(`second:${prompt}`); return { prompt, run: 2 }; } } },
+    });
+    const secondResult = await second.run(workflow("stage-v2"));
+
+    assert.equal(secondResult.replayed, false);
+    assert.deepEqual(secondResult.output, { prompt: "after pipeline", run: 2 });
+    assert.deepEqual(calls, ["first:stage-v1", "first:after pipeline", "second:stage-v2", "second:after pipeline"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("replays by keyed journal and only invalidates the changed pipeline subtree", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

@@ -7,19 +7,23 @@ export function makeTopologies(runtime: EngineRuntime) {
     async parallel<R>(thunks: Array<() => Promise<R>>): Promise<Array<R | null>> {
       const parent = runtime.currentScope();
       const parentPrev = parent.currentPrevKey;
-      const results = await Promise.allSettled(thunks.map((thunk, idx) => {
+      const results = await Promise.all(thunks.map(async (thunk, idx) => {
         const child = runtime.makeChildScope({ currentPrevKey: parentPrev, parallelIdx: idx, topologyPath: [...parent.topologyPath, `parallel:${idx}`] });
-        return runtime.withScope(child, thunk).then((value) => ({ value, key: child.currentPrevKey }));
+        try {
+          return { status: "fulfilled" as const, value: await runtime.withScope(child, thunk), key: child.currentPrevKey };
+        } catch (reason) {
+          return { status: "rejected" as const, reason, key: child.currentPrevKey };
+        }
       }));
       const keys: Array<string | null> = [];
       const out = results.map((result) => {
         if (result.status === "fulfilled") {
-          keys.push(result.value.key);
-          if (isErrorAgentResult(result.value.value)) return null;
-          return result.value.value;
+          keys.push(result.key);
+          if (isErrorAgentResult(result.value)) return null;
+          return result.value;
         }
         if (isConcurrentWritableCwdError(result.reason)) throw result.reason;
-        keys.push(null);
+        keys.push(result.key);
         return null;
       });
       parent.currentPrevKey = aggregateKeys(keys) ?? parent.currentPrevKey;
@@ -35,7 +39,13 @@ export function makeTopologies(runtime: EngineRuntime) {
         for (let stageIdx = 0; stageIdx < stages.length; stageIdx++) {
           const child = runtime.makeChildScope({ currentPrevKey: itemKey, itemIdx, stageIdx, topologyPath: [...parent.topologyPath, `pipeline:${itemIdx}:${stageIdx}`] });
           const itemCtx: ItemCtx = { itemIdx, stageIdx, cwd: child.cwd };
-          const value = await runtime.withScope(child, () => stages[stageIdx](prev, itemCtx));
+          let value: any;
+          try {
+            value = await runtime.withScope(child, () => stages[stageIdx](prev, itemCtx));
+          } catch (reason) {
+            if (isConcurrentWritableCwdError(reason)) throw reason;
+            return { value: null as O | null, key: child.currentPrevKey };
+          }
           if (value === null || isErrorAgentResult(value)) return { value: null as O | null, key: child.currentPrevKey };
           prev = value;
           itemKey = child.currentPrevKey;
