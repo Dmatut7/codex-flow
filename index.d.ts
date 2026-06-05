@@ -66,6 +66,7 @@ export interface WorkflowContext {
 
 export interface EngineConfig {
   defaultBackend?: BackendName;
+  forceBackend?: BackendName;
   autoRoute?: boolean;
   concurrency?: number;
   hardMaxConcurrency?: number;

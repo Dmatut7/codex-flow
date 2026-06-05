@@ -231,6 +231,26 @@ describe("codex-flow cli", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("try forces the fake backend even when an existing starter pins another backend", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-try-"));
+    const wf = path.join(dir, ".codex-flow", "generated", "starter.workflow.ts");
+    await mkdir(path.dirname(wf), { recursive: true });
+    await writeFile(
+      wf,
+      'export default async function workflow(ctx){ const r = await ctx.agent("forced fake", { backend: "not-real" }); return r.output; }\n',
+      "utf8",
+    );
+
+    const res = spawnSync("node", [binPath, "try"], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /"prompt": "forced fake"/);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("smoke fails nonzero for invalid backend names", () => {
     const res = spawnSync("node", [binPath, "smoke", "--backend", "fake"], { encoding: "utf8" });
     assert.notEqual(res.status, 0);

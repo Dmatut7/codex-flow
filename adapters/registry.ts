@@ -16,6 +16,7 @@ export function createAdapters(config: EngineConfig): Record<string, AgentAdapte
 }
 
 export function resolveBackend(config: EngineConfig, opts: AgentOpts): BackendName {
+  if (config.forceBackend) return config.forceBackend;
   if (opts.backend) return opts.backend;
   if (config.autoRoute !== false) {
     const routed = autoRoute(opts);

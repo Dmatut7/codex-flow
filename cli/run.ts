@@ -73,6 +73,10 @@ export async function run(argv: string[]): Promise<void> {
     ...(seed !== undefined ? { seed } : {}),
     journalPath,
   };
+  if (backend === "fake") {
+    config.autoRoute = false;
+    config.forceBackend = "fake";
+  }
 
   const stopProgress = startProgress(journalPath);
   try {
