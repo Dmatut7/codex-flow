@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added GitHub Actions npm Trusted Publishing workflow so tagged releases can publish without local npm tokens or OTP.
+- Added maintainer operations docs for releases, Trusted Publishing, and bundled Codex skill updates.
 
 ## 0.2.4 — 2026-06-05
 

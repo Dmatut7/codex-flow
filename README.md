@@ -172,4 +172,4 @@ npm test            # FakeAdapter only, no network
 
 Regression suite covers keyed replay, dependency-subtree invalidation, schema repair, transient retry, writable-cwd protection, deterministic shadows + stable cache keys, soft-budget skip, crash-residue / non-terminal-repair journal recovery, backend routing, and the CLI (`install-codex` + `run`).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local development rules and [docs/CODEX_FOR_OSS_APPLICATION.md](docs/CODEX_FOR_OSS_APPLICATION.md) for the Codex for Open Source application prep notes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local development rules, [docs/MAINTAINER_OPERATIONS.md](docs/MAINTAINER_OPERATIONS.md) for release / skill update operations, and [docs/CODEX_FOR_OSS_APPLICATION.md](docs/CODEX_FOR_OSS_APPLICATION.md) for the Codex for Open Source application prep notes.
