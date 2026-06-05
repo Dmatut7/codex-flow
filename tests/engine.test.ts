@@ -45,6 +45,20 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("uses the package release version as the default journal engine version", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    await createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+    }).run(async ({ agent }) => agent("version", { backend: "fake" }));
+
+    const [manifest] = await readJsonl(journalPath);
+    assert.equal(manifest.engineVersion, "0.2.0");
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("keeps pipeline stages unbarriered and parallel failures isolated", async () => {
     const dir = await tempDir();
     const events: string[] = [];
