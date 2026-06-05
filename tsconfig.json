@@ -16,6 +16,7 @@
   "include": [
     "engine/**/*.ts",
     "adapters/**/*.ts",
+    "cli/**/*.ts",
     "examples/**/*.ts",
     "tests/**/*.ts"
   ]

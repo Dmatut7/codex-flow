@@ -3,7 +3,8 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import { createEngine, type AgentResult, type BackendName } from "../engine/index.ts";
+import { createEngine, type AgentResult } from "../engine/index.ts";
+import type { BackendName } from "../engine/types.ts";
 
 type RealBackend = "codex-sdk" | "codex-exec" | "openai-responses";
 

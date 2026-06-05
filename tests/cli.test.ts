@@ -65,6 +65,11 @@ describe("codex-flow cli", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("typecheck covers published CLI TypeScript sources", async () => {
+    const tsconfig = JSON.parse(await readFile(path.join(repoRoot, "tsconfig.json"), "utf8")) as { include?: string[] };
+    assert.ok(tsconfig.include?.includes("cli/**/*.ts"), "tsconfig include should cover cli/**/*.ts");
+  });
+
   it("install-codex copies the skill into the target dir", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-cli-"));
     await installCodex(["--dir", dir]);
