@@ -48,8 +48,23 @@ function checkCodexCli(): Check {
 }
 
 function checkSkill(): Check {
-  const skillPath = path.join(codexHome(), "skills", "dynamic-workflow", "SKILL.md");
-  if (existsSync(skillPath)) return { name: "codex skill", status: "ok", detail: skillPath };
+  const skillDir = path.join(codexHome(), "skills", "dynamic-workflow");
+  const skillPath = path.join(skillDir, "SKILL.md");
+  const required = [
+    skillPath,
+    path.join(skillDir, "references", "engine-api.md"),
+    path.join(skillDir, "references", "setup.md"),
+  ];
+  if (existsSync(skillPath)) {
+    const missing = required.filter((file) => !existsSync(file));
+    if (!missing.length) return { name: "codex skill", status: "ok", detail: skillPath };
+    return {
+      name: "codex skill",
+      status: "warn",
+      detail: `stale or incomplete: ${skillDir}`,
+      next: "Run `codex-flow install-codex`, then restart Codex.",
+    };
+  }
   return {
     name: "codex skill",
     status: "warn",
