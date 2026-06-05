@@ -42,7 +42,9 @@
     "examples",
     "docs",
     "CONTRIBUTING.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "assets",
+    "ROADMAP.md"
   ],
   "scripts": {
     "test": "node --import tsx --test tests/*.test.ts",

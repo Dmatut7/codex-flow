@@ -1,8 +1,19 @@
 # codex-flow — dynamic workflows for Codex
 
-Turn Codex from "an agent that does one thing at a time" into an agent that **automatically splits a task, runs many sub-agents in parallel, journals progress, and resumes after interruption** — driven by plain language.
+![codex-flow banner](assets/codex-flow-banner.svg)
 
-You don't write workflow files. You install a skill, then just talk to Codex.
+Turn one natural-language request in Codex App or Codex CLI into **parallel, resumable, journaled Codex sub-agents**.
+
+Instead of asking Codex to do one long linear pass, say “use a dynamic workflow” and let Codex split the task, run branches in parallel, replay completed work after interruption, and summarize the journaled result.
+
+Built for maintainers and power users who do repeated multi-file work:
+
+- **Bug investigations** — one hypothesis or file group per Codex sub-agent.
+- **PR / code review** — fan out review passes, then merge findings.
+- **Issue triage** — classify, reproduce, and propose next actions in parallel.
+- **Release smoke checks** — run repeatable checks with journaled evidence.
+
+If this is useful, star the repo so more Codex users can find it: [Dmatut7/codex-flow](https://github.com/Dmatut7/codex-flow).
 
 ## 30-second start
 
@@ -31,6 +42,8 @@ Codex (via the installed skill) will:
 It uses **your Codex / ChatGPT membership login** — no OpenAI API key needed.
 
 If the run is interrupted (Ctrl-C, crash, budget), running it again **resumes**: finished work replays instantly, only unfinished nodes call Codex again.
+
+See [examples](examples/README.md) for runnable workflows and [ROADMAP.md](ROADMAP.md) for the public next steps.
 
 ## Why this is more than "an engine"
 
