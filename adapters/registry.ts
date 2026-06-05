@@ -25,6 +25,7 @@ export function resolveBackend(config: EngineConfig, opts: AgentOpts): BackendNa
 }
 
 export function autoRoute(opts: AgentOpts): BackendName | undefined {
+  if (opts.isolate === true) return "codex-exec";
   const schemaOnly = opts.schema && (opts.pure === true || opts.kind === "extract" || opts.kind === "classify" || opts.kind === "judge") && !opts.cwd && opts.sandbox !== "workspace-write" && opts.sandbox !== "danger-full-access" && !opts.additionalDirectories?.length;
   if (schemaOnly) return "openai-responses";
   return undefined;

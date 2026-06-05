@@ -6,6 +6,7 @@ import path from "node:path";
 import { z } from "zod";
 import { createEngine } from "../engine/index.ts";
 import { ConcurrentWritableCwdError, TimeoutError } from "../engine/agent.ts";
+import { resolveBackend } from "../adapters/registry.ts";
 
 async function tempDir(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "codex-workflow-test-"));
@@ -375,6 +376,14 @@ describe("dynamic workflow engine", () => {
     assert.equal(globalThis.crypto.randomUUID, originalRandomUUID);
     assert.equal(globalThis.crypto.getRandomValues, originalGetRandomValues);
     await rm(dir, { recursive: true, force: true });
+  });
+
+
+  it("routes to codex-exec only when isolate is explicitly true", () => {
+    assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, {}), "codex-sdk");
+    assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { isolate: false }), "codex-sdk");
+    assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { isolate: true }), "codex-exec");
+    assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { backend: "codex-sdk", isolate: true }), "codex-sdk");
   });
 
   it("applies budget skip without charging replayed nodes", async () => {

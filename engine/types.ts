@@ -17,6 +17,7 @@ export interface AgentOpts {
   backend?: BackendName;
   kind?: AgentKind;
   pure?: boolean;
+  isolate?: boolean;
   model?: string;
   cwd?: string;
   sandbox?: Sandbox;

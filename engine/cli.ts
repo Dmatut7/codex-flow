@@ -7,7 +7,8 @@ import type { EngineConfig } from "./types.ts";
 async function main(): Promise<void> {
   const [command, scriptPath, ...rest] = process.argv.slice(2);
   if (command !== "run" || !scriptPath) {
-    console.error("Usage: codex-engine run <workflow.ts> [--backend name] [--config codex.config.json] [--journal path]");
+    console.error("Usage: codex-engine run <workflow.ts> [--backend name] [--config codex.config.json] [--journal path] [--resume]");
+    console.error("Resume is automatic when the journal exists; --resume is a compatibility placeholder and does not change behavior.");
     process.exit(2);
   }
   const configFlag = valueAfter(rest, "--config") ?? "codex.config.json";
