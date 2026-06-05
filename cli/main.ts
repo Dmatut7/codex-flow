@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { installCodex } from "./install-codex.ts";
 import { run } from "./run.ts";
+import { smoke } from "./smoke.ts";
 
 function version(): string {
   try {
@@ -13,14 +14,15 @@ function version(): string {
   }
 }
 
-const HELP = `dongt — dynamic workflow engine for Codex
+const HELP = `codex-flow — dynamic workflow engine for Codex
 
 Usage:
-  dongt install-codex [--dir <skills-dir>]   Install the Codex skill (default: $CODEX_HOME/skills)
-  dongt run <workflow.ts> [--backend <name>] [--journal <path>]
+  codex-flow install-codex [--dir <skills-dir>]   Install the Codex skill (default: $CODEX_HOME/skills)
+  codex-flow run <workflow.ts> [--backend <name>] [--journal <path>]
                                              Run a workflow (default backend: codex-sdk, resumes on re-run)
-  dongt --version
-  dongt --help
+  codex-flow smoke [--backend <name>]        Run one structured real-backend smoke (skips cleanly if unavailable)
+  codex-flow --version
+  codex-flow --help
 
 After install-codex + restarting Codex, just tell Codex (in any project):
   「用动态工作流帮我…」 / "use a dynamic workflow to … in parallel"
@@ -35,6 +37,9 @@ async function main(): Promise<void> {
     case "run":
       await run(rest);
       break;
+    case "smoke":
+      await smoke(rest);
+      break;
     case "-v":
     case "--version":
       console.log(version());
@@ -45,7 +50,7 @@ async function main(): Promise<void> {
       console.log(HELP);
       break;
     default:
-      console.error(`dongt: unknown command "${cmd}"\n`);
+      console.error(`codex-flow: unknown command "${cmd}"\n`);
       console.log(HELP);
       process.exit(2);
   }

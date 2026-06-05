@@ -21,16 +21,16 @@
 这类话时,不要要求用户自己写 workflow 文件或敲命令。你就是缺失的驱动层:
 
 1. 先用一句话复述要跑的目标;若输入材料/目标格式缺失,最多问一个必要问题。
-2. 能直接推断时,在 `.codex-workflow/generated/` 下生成临时 `*.workflow.ts`。
+2. 能直接推断时,在 `.codex-flow/generated/` 下生成临时 `*.workflow.ts`。
    这个目录已被 `.gitignore` 忽略,用于一次性工作流草稿和 journal。
 3. workflow 必须导出 `default async function workflow(ctx)`;优先用 `ctx.parallel` /
    `ctx.pipeline` / `ctx.phase` / `ctx.agent` 表达任务,不要写一次性大脚本绕过引擎。
 4. 默认运行命令:
 
 ```bash
-npx tsx engine/cli.ts run .codex-workflow/generated/<name>.workflow.ts \
+codex-flow run .codex-flow/generated/<name>.workflow.ts \
   --backend codex-sdk \
-  --journal .codex-workflow/generated/<name>.jsonl
+  --journal .codex-flow/generated/<name>.jsonl
 ```
 
 5. 默认后端是 `codex-sdk`,使用用户的 Codex/ChatGPT 登录会员权益;不要让用户提供 API key。

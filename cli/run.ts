@@ -22,26 +22,26 @@ function firstPositional(argv: string[]): string | undefined {
   return undefined;
 }
 
-/** `dongt run <workflow.ts> [--backend codex-sdk] [--journal path]` */
+/** `codex-flow run <workflow.ts> [--backend codex-sdk] [--journal path]` */
 export async function run(argv: string[]): Promise<void> {
   const file = firstPositional(argv);
   if (!file) {
-    console.error("usage: dongt run <workflow.ts> [--backend codex-sdk|codex-exec|fake] [--journal <path>]");
+    console.error("usage: codex-flow run <workflow.ts> [--backend codex-sdk|codex-exec|fake] [--journal <path>]");
     process.exit(2);
   }
   const abs = path.resolve(file);
   if (!existsSync(abs)) {
-    console.error(`dongt: workflow not found: ${abs}`);
+    console.error(`codex-flow: workflow not found: ${abs}`);
     process.exit(2);
   }
 
   const name = path.basename(abs).replace(/\.(ts|js|mjs|cjs)$/, "").replace(/\.workflow$/, "");
   const backend = valueAfter(argv, "--backend") ?? "codex-sdk";
-  const journalPath = valueAfter(argv, "--journal") ?? path.join(process.cwd(), ".dongt", "journal", `${name}.jsonl`);
+  const journalPath = valueAfter(argv, "--journal") ?? path.join(process.cwd(), ".codex-flow", "journal", `${name}.jsonl`);
   mkdirSync(path.dirname(journalPath), { recursive: true });
 
-  // Optional per-project overrides at .dongt/config.json
-  const cfgPath = path.join(process.cwd(), ".dongt", "config.json");
+  // Optional per-project overrides at .codex-flow/config.json
+  const cfgPath = path.join(process.cwd(), ".codex-flow", "config.json");
   const fileCfg: Partial<EngineConfig> = existsSync(cfgPath) ? JSON.parse(readFileSync(cfgPath, "utf8")) : {};
 
   const config: EngineConfig = {
@@ -56,7 +56,7 @@ export async function run(argv: string[]): Promise<void> {
     console.log(JSON.stringify(result, null, 2));
     console.error(`\n(journal: ${journalPath} — re-run the same command to resume)`);
   } catch (error) {
-    console.error(`dongt run failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`codex-flow run failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
 }

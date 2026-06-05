@@ -1,10 +1,33 @@
 {
-  "name": "dongt",
+  "name": "codex-flow",
   "version": "0.2.0",
-  "description": "Dynamic workflow engine for Codex — turn Codex into a parallel, resumable, self-orchestrating workflow agent.",
+  "description": "Dynamic workflow orchestration for Codex — split complex tasks into parallel, resumable, journaled Codex sub-agents.",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dmatut7/codex-flow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dmatut7/codex-flow/issues"
+  },
+  "homepage": "https://github.com/Dmatut7/codex-flow#readme",
+  "keywords": [
+    "codex",
+    "codex-cli",
+    "codex-app",
+    "workflow",
+    "agent",
+    "agents",
+    "parallel",
+    "resume",
+    "journaling",
+    "orchestration",
+    "openai"
+  ],
   "bin": {
-    "dongt": "./bin/dongt.mjs"
+    "codex-flow": "./bin/codex-flow.mjs",
+    "dongt": "./bin/codex-flow.mjs"
   },
   "exports": {
     ".": "./engine/index.ts"
@@ -21,7 +44,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "example": "tsx examples/triage.workflow.ts",
-    "dongt": "tsx cli/main.ts"
+    "dongt": "tsx cli/main.ts",
+    "codex-flow": "tsx cli/main.ts"
   },
   "engines": {
     "node": ">=18"

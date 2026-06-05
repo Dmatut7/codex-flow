@@ -1,6 +1,6 @@
-# dongt engine API (for generating workflows)
+# codex-flow engine API (for generating workflows)
 
-A workflow is a single file that **exports a default async function** taking `ctx`. It is run by `dongt run <file>`. **No imports.** Structured output uses **plain JSON Schema objects**.
+A workflow is a single file that **exports a default async function** taking `ctx`. It is run by `codex-flow run <file>`. **No imports.** Structured output uses **plain JSON Schema objects**.
 
 ## ctx surface
 
@@ -70,4 +70,4 @@ export default async function workflow(ctx) {
 }
 ```
 
-Run: `dongt run .dongt/generated/login-bug.workflow.ts` (resumes on re-run).
+Run: `codex-flow run .codex-flow/generated/login-bug.workflow.ts` (resumes on re-run).

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,7 @@ function valueAfter(argv: string[], name: string): string | undefined {
 export async function installCodex(argv: string[]): Promise<void> {
   const source = fileURLToPath(new URL("../codex-skill", import.meta.url));
   if (!existsSync(source)) {
-    console.error(`dongt: bundled skill not found at ${source}`);
+    console.error(`codex-flow: bundled skill not found at ${source}`);
     process.exit(1);
   }
 
@@ -27,6 +27,7 @@ export async function installCodex(argv: string[]): Promise<void> {
   const target = path.join(skillsDir, SKILL_NAME);
 
   mkdirSync(skillsDir, { recursive: true });
+  rmSync(target, { recursive: true, force: true });
   cpSync(source, target, { recursive: true });
 
   console.log("✓ Installed Codex skill: dynamic-workflow");

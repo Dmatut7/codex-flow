@@ -1,4 +1,4 @@
-# dongt — dynamic workflows for Codex
+# codex-flow — dynamic workflows for Codex
 
 Turn Codex from "an agent that does one thing at a time" into an agent that **automatically splits a task, runs many sub-agents in parallel, journals progress, and resumes after interruption** — driven by plain language.
 
@@ -7,10 +7,12 @@ You don't write workflow files. You install a skill, then just talk to Codex.
 ## 30-second start
 
 ```bash
-npm install -g dongt      # installs the `dongt` CLI
-dongt install-codex       # installs the "dynamic-workflow" skill into Codex
+npm install -g codex-flow      # installs the `codex-flow` CLI
+codex-flow install-codex       # installs the "dynamic-workflow" skill into Codex
 # restart Codex
 ```
+
+`dongt` remains as a compatibility alias, but the public package and docs use `codex-flow`.
 
 Then, in **any** project, just tell Codex:
 
@@ -21,8 +23,8 @@ Then, in **any** project, just tell Codex:
 Codex (via the installed skill) will:
 
 1. decide the task suits a dynamic workflow,
-2. **generate** a temporary workflow under `.dongt/generated/`,
-3. **run** it (`dongt run …`) — many Codex sub-agents in parallel,
+2. **generate** a temporary workflow under `.codex-flow/generated/`,
+3. **run** it (`codex-flow run …`) — many Codex sub-agents in parallel,
 4. **summarize** the result.
 
 It uses **your Codex / ChatGPT membership login** — no OpenAI API key needed.
@@ -31,11 +33,11 @@ If the run is interrupted (Ctrl-C, crash, budget), running it again **resumes**:
 
 ## Why this is more than "an engine"
 
-A normal Codex turn is linear. `dongt` makes Codex orchestrate:
+A normal Codex turn is linear. `codex-flow` makes Codex orchestrate:
 
 - **parallel fan-out** — one sub-agent per file / hypothesis / item, all at once,
 - **content-addressed resume** — re-run = free replay of completed work,
-- **journaling / audit** — every node + token usage recorded in `.dongt/journal/*.jsonl`,
+- **journaling / audit** — every node + token usage recorded in `.codex-flow/journal/*.jsonl`,
 - **soft token budget**, deterministic control flow, schema-validated outputs.
 
 ## Manual use (optional)
@@ -43,8 +45,8 @@ A normal Codex turn is linear. `dongt` makes Codex orchestrate:
 You can also run a workflow file directly:
 
 ```bash
-dongt run path/to/my.workflow.ts                 # default backend: codex-sdk (your membership)
-dongt run path/to/my.workflow.ts --backend fake  # no network, for testing
+codex-flow run path/to/my.workflow.ts                 # default backend: codex-sdk (your membership)
+codex-flow run path/to/my.workflow.ts --backend fake  # no network, for testing
 ```
 
 A workflow is a single file that exports a default function. The skill generates these for you, but here is the shape (import-free, plain JSON Schema):
@@ -89,7 +91,7 @@ Routing: `opts.backend` wins → else (if `autoRoute`) an explicitly `pure`/`kin
 
 ## Config
 
-Per-project overrides go in `.dongt/config.json`; the engine-level config (also used by `createEngine`) supports:
+Per-project overrides go in `.codex-flow/config.json`; the engine-level config (also used by `createEngine`) supports:
 
 - `defaultBackend`, `autoRoute`, `concurrency`, `hardMaxConcurrency`, `providerRateBudget`
 - `seed` (deterministic `now`/`random` + shadows), `defaultModel`, `estimatedTokensPerCall`, `timeoutMs`
@@ -108,8 +110,8 @@ During a run, the workflow gets seeded shadows for `Date`, `Date.now`, `Math.ran
 ## Verify it on real Codex
 
 ```bash
-npx tsx scripts/smoke.ts --backend codex-sdk     # one real structured call
-npx tsx scripts/smoke.ts --backend codex-exec
+codex-flow smoke --backend codex-sdk     # one real structured call
+codex-flow smoke --backend codex-exec
 ```
 Missing credentials prints `SMOKE_SKIPPED` and exits 0.
 

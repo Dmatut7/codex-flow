@@ -1,18 +1,18 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { installCodex } from "../cli/install-codex.ts";
 
-const binPath = fileURLToPath(new URL("../bin/dongt.mjs", import.meta.url));
+const binPath = fileURLToPath(new URL("../bin/codex-flow.mjs", import.meta.url));
 
-describe("dongt cli", () => {
+describe("codex-flow cli", () => {
   it("install-codex copies the skill into the target dir", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "dongt-cli-"));
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-cli-"));
     await installCodex(["--dir", dir]);
     const skillMd = path.join(dir, "dynamic-workflow", "SKILL.md");
     assert.ok(existsSync(skillMd), "SKILL.md should exist");
@@ -22,8 +22,18 @@ describe("dongt cli", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("install-codex replaces a stale installed skill", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-cli-"));
+    const stale = path.join(dir, "dynamic-workflow", "stale.txt");
+    await mkdir(path.dirname(stale), { recursive: true });
+    await writeFile(stale, "old", "utf8");
+    await installCodex(["--dir", dir]);
+    assert.equal(existsSync(stale), false, "stale files should not survive reinstall");
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("run executes an import-free workflow via the fake backend", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "dongt-run-"));
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-run-"));
     const wf = path.join(dir, "t.workflow.ts");
     await writeFile(wf, 'export default async function workflow(ctx){ const r = await ctx.agent("hi", {}); return r.output; }\n', "utf8");
     const res = spawnSync("node", [binPath, "run", wf, "--backend", "fake", "--journal", path.join(dir, "j.jsonl")], {
