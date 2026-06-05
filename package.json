@@ -57,7 +57,8 @@
     "typecheck": "tsc --noEmit",
     "example": "tsx examples/triage.workflow.ts",
     "dongt": "tsx cli/main.ts",
-    "codex-flow": "tsx cli/main.ts"
+    "codex-flow": "tsx cli/main.ts",
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "engines": {
     "node": ">=18"
