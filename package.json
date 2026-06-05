@@ -26,8 +26,8 @@
     "openai"
   ],
   "bin": {
-    "codex-flow": "./bin/codex-flow.mjs",
-    "dongt": "./bin/codex-flow.mjs"
+    "codex-flow": "bin/codex-flow.mjs",
+    "dongt": "bin/codex-flow.mjs"
   },
   "exports": {
     ".": "./engine/index.ts"
