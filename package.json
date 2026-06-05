@@ -1,6 +1,6 @@
 {
   "name": "codex-flow",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Dynamic workflow orchestration for Codex — split complex tasks into parallel, resumable, journaled Codex sub-agents.",
   "type": "module",
   "license": "MIT",

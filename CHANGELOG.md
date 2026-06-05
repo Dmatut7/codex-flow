@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3 — 2026-06-05
+
+- Moved the install command into the README first screen so GitHub visitors see it immediately.
+- Rebuilt the demo GIF and storyboard SVG so the first frame shows `npm install -g codex-flow` and no terminal lines are clipped.
+
 ## 0.2.2 — 2026-06-05
 
 - Published `codex-flow` on npm and made npm install the primary public path.
