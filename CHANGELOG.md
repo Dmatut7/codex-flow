@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-06-05
+
+- Published `codex-flow` on npm and made npm install the primary public path.
+- Updated Codex App / CLI docs, launch notes, and bundled skill setup text for npm-first onboarding.
+- Kept GitHub install as a fallback path.
+
 ## 0.2.1 — 2026-06-05
 
 Release-readiness hardening after the first public tag.

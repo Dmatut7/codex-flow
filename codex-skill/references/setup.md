@@ -5,16 +5,12 @@ Default path uses the logged-in Codex / ChatGPT account. No OpenAI API key is ne
 ## Install
 
 ```bash
-npm install -g github:Dmatut7/codex-flow
+npm install -g codex-flow
 codex-flow install-codex
 codex-flow doctor
 ```
 
-After npm publish, the install command becomes:
-
-```bash
-npm install -g codex-flow
-```
+GitHub fallback if npm is unavailable: `npm install -g github:Dmatut7/codex-flow`.
 
 Restart Codex after `install-codex`.
 

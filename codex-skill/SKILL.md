@@ -21,7 +21,7 @@ If it's a single trivial question or one tiny edit, just answer/do it directly â
 
 ## Steps
 
-0. **Preflight if needed.** If this is the first workflow in the project or the CLI availability is unclear, run `codex-flow doctor`. If `codex-flow` is missing, tell the user to install it with `npm install -g github:Dmatut7/codex-flow` (or `npm install -g codex-flow` after npm publish) and stop.
+0. **Preflight if needed.** If this is the first workflow in the project or the CLI availability is unclear, run `codex-flow doctor`. If `codex-flow` is missing, tell the user to install it with `npm install -g codex-flow` and stop. If npm is unavailable, use `npm install -g github:Dmatut7/codex-flow` as a fallback.
 
 1. **Restate the goal in one line.** If the input material or output shape is genuinely missing, ask at most ONE necessary question. Otherwise infer and proceed.
 

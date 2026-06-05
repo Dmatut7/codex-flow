@@ -15,7 +15,7 @@ import { aggregateKeys, makeScope, type EngineRuntime, type Scope } from "./runt
 import { createAdapters, resolveBackend as resolveBackendFromRegistry } from "../adapters/registry.ts";
 import type { AgentAdapter, NormalizedAgentOpts, NormalizedSchema } from "../adapters/types.ts";
 
-const DEFAULT_ENGINE_VERSION = "0.2.1";
+const DEFAULT_ENGINE_VERSION = "0.2.2";
 
 class WorkflowEngine implements Engine, EngineRuntime {
   readonly config: Required<Pick<EngineConfig, "defaultBackend" | "autoRoute" | "seed" | "estimatedTokensPerCall" | "engineVersion">> & EngineConfig;

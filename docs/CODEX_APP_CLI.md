@@ -4,16 +4,16 @@ This is the main path: install once, restart Codex, then ask in natural language
 
 ## 1. Install the CLI
 
-Until the npm package is published, install from GitHub:
-
-```bash
-npm install -g github:Dmatut7/codex-flow
-```
-
-After npm publish, this becomes:
+Install from npm:
 
 ```bash
 npm install -g codex-flow
+```
+
+GitHub fallback if npm is unavailable:
+
+```bash
+npm install -g github:Dmatut7/codex-flow
 ```
 
 Verify:

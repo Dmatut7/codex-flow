@@ -36,7 +36,7 @@ Prefer a static version? See the [storyboard SVG](assets/codex-flow-demo.svg).
 ## 30-second start
 
 ```bash
-npm install -g github:Dmatut7/codex-flow  # installs the `codex-flow` CLI
+npm install -g codex-flow                 # installs the `codex-flow` CLI
 codex-flow doctor                       # checks local install + fake backend
 codex-flow try                          # creates + runs a starter workflow without network
 codex-flow install-codex                # installs the "dynamic-workflow" skill into Codex
@@ -44,7 +44,7 @@ codex-flow doctor                       # confirms the Codex skill is installed
 # restart Codex
 ```
 
-After the npm package is published, the install command becomes `npm install -g codex-flow`.
+GitHub fallback if npm is unavailable: `npm install -g github:Dmatut7/codex-flow`.
 `dongt` remains as a compatibility alias, but the public package and docs use `codex-flow`.
 
 Then, in **any** project, just tell Codex:

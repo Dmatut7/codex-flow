@@ -14,13 +14,13 @@ OpenAI says the program is for maintainers of active public OSS projects with me
 ## Current readiness
 
 - Public GitHub repository.
-- Public release: https://github.com/Dmatut7/codex-flow/releases/tag/v0.2.1
+- Public release: https://github.com/Dmatut7/codex-flow/releases/tag/v0.2.2
 - MIT license.
 - Clear README with install and usage path.
-- CLI install path: `npm install -g github:Dmatut7/codex-flow` until npm OTP publish is completed.
+- CLI install path: `npm install -g codex-flow`. GitHub fallback: `npm install -g github:Dmatut7/codex-flow`.
 - Codex skill install path: `codex-flow install-codex`, then users can ask Codex to use a dynamic workflow in any project.
-- Local verification: `npm run typecheck`, `npm test`, `npm publish --dry-run --access public`.
-- Published package readiness: root JS import works, root TypeScript declarations work, `prepublishOnly` gates publish with typecheck + tests.
+- Local verification: `npm run typecheck`, `npm test`, GitHub Actions CI, and public npm install smoke.
+- Published package readiness: `codex-flow` is public on npm, root JS import works, root TypeScript declarations work, `prepublishOnly` gates publish with typecheck + tests.
 - Real Codex smoke verified on 2026-06-05:
   - `codex-flow smoke --backend codex-sdk` → `SMOKE_OK`, `pong:true`, non-zero usage.
   - `codex-flow smoke --backend codex-exec` → `SMOKE_OK`, `pong:true`, non-zero usage.
@@ -28,10 +28,8 @@ OpenAI says the program is for maintainers of active public OSS projects with me
 - Maintainer workflow examples included: bug investigation, PR review, issue triage, release smoke.
 - Project directly targets maintainer automation, not generic task management.
 
-Remaining blockers / weaker signals:
+Remaining weaker signal:
 
-- npm package publish needs the maintainer's npm publish-time OTP.
-- GitHub Actions CI needs a refreshed GitHub token with `workflow` scope.
 - Adoption signals are still early: collect stars, issues, outside-user feedback, and usage examples after launch.
 
 ## Form fields

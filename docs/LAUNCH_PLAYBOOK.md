@@ -3,8 +3,8 @@
 Use this when sharing `codex-flow` publicly or preparing the Codex for Open Source application.
 
 Repo: https://github.com/Dmatut7/codex-flow
-Install now: `npm install -g github:Dmatut7/codex-flow`
-After npm publish: `npm install -g codex-flow`
+Install: `npm install -g codex-flow`
+GitHub fallback: `npm install -g github:Dmatut7/codex-flow`
 
 ## One-line pitch
 
@@ -61,12 +61,12 @@ Dynamic workflow orchestration for Codex: parallel, resumable, journaled sub-age
 
 ## npm publish checklist
 
-Current state: GitHub install remains the public fallback; npm publish is prepared but requires the maintainer's publish-time OTP.
-
-When the OTP is available, publish with:
+The package is published on npm. For future releases:
 
 ```bash
-npm publish --access public --otp <6-digit-code>
+npm run typecheck
+npm test
+npm publish --access public
 ```
 
 Then verify:
@@ -78,14 +78,12 @@ codex-flow --version
 codex-flow doctor
 ```
 
-If npm reports that 2FA is required, generate a fresh OTP and rerun the same publish command. Do not move or retag `v0.2.0`; publish from the current release tag/version instead.
-
 ## Demo script
 
 1. Install:
 
 ```bash
-npm install -g github:Dmatut7/codex-flow
+npm install -g codex-flow
 codex-flow doctor
 codex-flow try
 codex-flow install-codex
