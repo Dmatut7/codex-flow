@@ -15,6 +15,17 @@ Built for maintainers and power users who do repeated multi-file work:
 
 If this is useful, star the repo so more Codex users can find it: [Dmatut7/codex-flow](https://github.com/Dmatut7/codex-flow).
 
+## What it feels like
+
+![codex-flow demo](assets/codex-flow-demo.svg)
+
+The important difference is not another config file. It is the loop:
+
+1. say a normal sentence in Codex,
+2. Codex generates a temporary workflow,
+3. `codex-flow` runs the branches,
+4. the journal makes interruption and rerun cheap.
+
 ## 30-second start
 
 ```bash
@@ -43,7 +54,7 @@ It uses **your Codex / ChatGPT membership login** — no OpenAI API key needed.
 
 If the run is interrupted (Ctrl-C, crash, budget), running it again **resumes**: finished work replays instantly, only unfinished nodes call Codex again.
 
-See [examples](examples/README.md) for runnable workflows and [ROADMAP.md](ROADMAP.md) for the public next steps.
+See [examples](examples/README.md) for runnable workflows, [ROADMAP.md](ROADMAP.md) for public next steps, and [docs/LAUNCH_PLAYBOOK.md](docs/LAUNCH_PLAYBOOK.md) for sharing / launch copy.
 
 ## Why this is more than "an engine"
 

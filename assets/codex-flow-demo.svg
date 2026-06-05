@@ -1,0 +1,87 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">codex-flow demo</title>
+  <desc id="desc">A 30-second demo storyboard: ask Codex for a dynamic workflow, generate workflow, run parallel agents, resume from journal.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06111f"/>
+      <stop offset="0.55" stop-color="#081b2c"/>
+      <stop offset="1" stop-color="#10251a"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0f2437"/>
+      <stop offset="1" stop-color="#102018"/>
+    </linearGradient>
+    <linearGradient id="line" x1="170" y1="360" x2="1020" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7dd3fc"/>
+      <stop offset="0.5" stop-color="#a7f3d0"/>
+      <stop offset="1" stop-color="#fde68a"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <style>
+      .title{font:800 52px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#f8fafc}
+      .subtitle{font:600 25px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#bfdbfe}
+      .step{font:800 22px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#e2e8f0}
+      .small{font:600 17px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#cbd5e1}
+      .code{font:600 19px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;fill:#d1fae5}
+      .muted{fill:#94a3b8}
+      .accent{fill:#7dd3fc}
+      .ok{fill:#86efac}
+      .warn{fill:#fde68a}
+    </style>
+  </defs>
+  <rect width="1200" height="720" rx="36" fill="url(#bg)"/>
+  <circle cx="1050" cy="85" r="210" fill="#38bdf8" opacity="0.10"/>
+  <circle cx="130" cy="650" r="210" fill="#22c55e" opacity="0.10"/>
+
+  <text class="title" x="70" y="86">30-second codex-flow demo</text>
+  <text class="subtitle" x="70" y="128">From one natural-language request to parallel, resumable Codex sub-agents.</text>
+
+  <g stroke="url(#line)" stroke-width="5" stroke-linecap="round" opacity="0.85">
+    <path d="M205 360 H995"/>
+    <path d="M385 360 C420 300 455 300 490 360"/>
+    <path d="M615 360 C650 420 685 420 720 360"/>
+    <path d="M830 360 C865 300 900 300 935 360"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="180" width="250" height="180" rx="24" fill="url(#panel)" stroke="#24445f"/>
+    <rect x="355" y="180" width="250" height="180" rx="24" fill="url(#panel)" stroke="#24445f"/>
+    <rect x="640" y="180" width="250" height="180" rx="24" fill="url(#panel)" stroke="#24445f"/>
+    <rect x="925" y="180" width="205" height="180" rx="24" fill="url(#panel)" stroke="#24445f"/>
+  </g>
+
+  <g>
+    <circle cx="105" cy="215" r="19" fill="#7dd3fc"/><text class="step" x="132" y="223">Ask</text>
+    <text class="small" x="100" y="270">“use a dynamic workflow</text>
+    <text class="small" x="100" y="298">to investigate this bug</text>
+    <text class="small" x="100" y="326">in parallel”</text>
+
+    <circle cx="390" cy="215" r="19" fill="#a7f3d0"/><text class="step" x="417" y="223">Generate</text>
+    <text class="code" x="385" y="272">.codex-flow/generated/</text>
+    <text class="code" x="385" y="302">bug.workflow.ts</text>
+    <text class="small muted" x="385" y="331">no hand-written workflow</text>
+
+    <circle cx="675" cy="215" r="19" fill="#fde68a"/><text class="step" x="702" y="223">Run</text>
+    <text class="code" x="670" y="272">codex-flow run …</text>
+    <text class="small" x="670" y="303">agent A · agent B · agent C</text>
+    <text class="small ok" x="670" y="332">parallel structured results</text>
+
+    <circle cx="960" cy="215" r="19" fill="#c4b5fd"/><text class="step" x="987" y="223">Resume</text>
+    <text class="small" x="955" y="272">rerun same command</text>
+    <text class="small ok" x="955" y="303">completed nodes replay</text>
+    <text class="small warn" x="955" y="332">unfinished nodes run</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="90" y="430" width="1020" height="210" rx="22" fill="#07111f" stroke="#1f3a52"/>
+    <rect x="90" y="430" width="1020" height="44" rx="22" fill="#111f2d"/>
+    <circle cx="123" cy="452" r="8" fill="#f87171"/><circle cx="149" cy="452" r="8" fill="#fbbf24"/><circle cx="175" cy="452" r="8" fill="#34d399"/>
+    <text class="code muted" x="205" y="459">Terminal</text>
+    <text class="code" x="120" y="510">$ codex-flow run .codex-flow/generated/bug.workflow.ts</text>
+    <text class="code accent" x="120" y="548">phase investigate: 3 branches running in parallel…</text>
+    <text class="code ok" x="120" y="586">✓ auth.ts suspect=token refresh confidence=0.82</text>
+    <text class="code ok" x="120" y="624">✓ session.ts replayed=true · journal=.codex-flow/journal/bug.jsonl</text>
+  </g>
+</svg>
