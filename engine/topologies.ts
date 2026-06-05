@@ -58,7 +58,13 @@ export function makeTopologies(runtime: EngineRuntime) {
 
     async phase<R>(title: string, body: () => Promise<R>): Promise<R> {
       const parent = runtime.currentScope();
-      const child: Scope = runtime.makeChildScope({ phase: [...parent.phase, title], currentPrevKey: parent.currentPrevKey });
+      const child: Scope = runtime.makeChildScope({
+        phase: [...parent.phase, title],
+        currentPrevKey: parent.currentPrevKey,
+        parallelIdx: parent.parallelIdx,
+        itemIdx: parent.itemIdx,
+        stageIdx: parent.stageIdx,
+      });
       const result = await runtime.withScope(child, body);
       parent.currentPrevKey = child.currentPrevKey;
       return result;

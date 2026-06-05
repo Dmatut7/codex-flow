@@ -212,6 +212,41 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("replays phases inside parallel without cache-key aliasing", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const workflow = async ({ parallel, phase, agent }: any) => parallel(["outer-a", "outer-b"].map((outer: string) => async () => {
+      const result = await phase("shared phase", () => agent("same phase prompt", { backend: "fake" }));
+      return { outer, inner: result.output };
+    }));
+
+    let count = 0;
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async () => ({ value: ++count }) } },
+    });
+    const firstResult = await first.run(workflow);
+
+    assert.deepEqual(firstResult, [
+      { outer: "outer-a", inner: { value: 1 } },
+      { outer: "outer-b", inner: { value: 2 } },
+    ]);
+
+    const replay = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("should replay"); } } },
+    });
+    const replayResult = await replay.run(workflow);
+
+    assert.deepEqual(replayResult, firstResult);
+    assert.equal(replay.adapters.fake.calls.length, 0);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("repairs invalid schema output under the same cache key", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");
