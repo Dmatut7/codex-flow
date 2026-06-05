@@ -1,0 +1,37 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { installCodex } from "../cli/install-codex.ts";
+
+const binPath = fileURLToPath(new URL("../bin/dongt.mjs", import.meta.url));
+
+describe("dongt cli", () => {
+  it("install-codex copies the skill into the target dir", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "dongt-cli-"));
+    await installCodex(["--dir", dir]);
+    const skillMd = path.join(dir, "dynamic-workflow", "SKILL.md");
+    assert.ok(existsSync(skillMd), "SKILL.md should exist");
+    const text = await readFile(skillMd, "utf8");
+    assert.match(text, /name: dynamic-workflow/);
+    assert.ok(existsSync(path.join(dir, "dynamic-workflow", "references", "engine-api.md")), "reference should be copied");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("run executes an import-free workflow via the fake backend", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "dongt-run-"));
+    const wf = path.join(dir, "t.workflow.ts");
+    await writeFile(wf, 'export default async function workflow(ctx){ const r = await ctx.agent("hi", {}); return r.output; }\n', "utf8");
+    const res = spawnSync("node", [binPath, "run", wf, "--backend", "fake", "--journal", path.join(dir, "j.jsonl")], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /"prompt": "hi"/);
+    await rm(dir, { recursive: true, force: true });
+  });
+});

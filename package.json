@@ -1,18 +1,27 @@
 {
-  "name": "codex-dynamic-workflow-engine",
-  "version": "0.1.0",
-  "private": true,
+  "name": "dongt",
+  "version": "0.2.0",
+  "description": "Dynamic workflow engine for Codex — turn Codex into a parallel, resumable, self-orchestrating workflow agent.",
   "type": "module",
   "bin": {
-    "codex-engine": "./engine/cli.ts"
+    "dongt": "./bin/dongt.mjs"
   },
   "exports": {
     ".": "./engine/index.ts"
   },
+  "files": [
+    "bin",
+    "cli",
+    "engine",
+    "adapters",
+    "codex-skill",
+    "README.md"
+  ],
   "scripts": {
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "example": "tsx examples/triage.workflow.ts"
+    "example": "tsx examples/triage.workflow.ts",
+    "dongt": "tsx cli/main.ts"
   },
   "engines": {
     "node": ">=18"
@@ -21,12 +30,12 @@
     "@openai/codex-sdk": "0.128.0",
     "ajv": "^8.17.1",
     "openai": "^6.9.1",
+    "tsx": "^4.20.6",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

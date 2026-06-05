@@ -1,232 +1,123 @@
-# Codex Dynamic Workflow Engine
+# dongt — dynamic workflows for Codex
 
-A backend-agnostic dynamic workflow engine for Codex-style agents.
+Turn Codex from "an agent that does one thing at a time" into an agent that **automatically splits a task, runs many sub-agents in parallel, journals progress, and resumes after interruption** — driven by plain language.
 
-You write one workflow with `agent()`, `parallel()`, `pipeline()`, `phase()`, `log()`, and `budget`. The engine handles keyed replay, dependency edges, soft budgets, deterministic helpers, schema validation/repair, concurrency limits, writable-cwd protection, and backend selection.
+You don't write workflow files. You install a skill, then just talk to Codex.
 
-Default backend: `@openai/codex-sdk`. Optional backends: `codex-exec` and `openai-responses`.
-
-## Install
+## 30-second start
 
 ```bash
-npm install
+npm install -g dongt      # installs the `dongt` CLI
+dongt install-codex       # installs the "dynamic-workflow" skill into Codex
+# restart Codex
 ```
 
-Run the no-network fake example:
+Then, in **any** project, just tell Codex:
+
+> 用动态工作流帮我排查登录失败的问题
+>
+> use a dynamic workflow to investigate this bug across these files, in parallel
+
+Codex (via the installed skill) will:
+
+1. decide the task suits a dynamic workflow,
+2. **generate** a temporary workflow under `.dongt/generated/`,
+3. **run** it (`dongt run …`) — many Codex sub-agents in parallel,
+4. **summarize** the result.
+
+It uses **your Codex / ChatGPT membership login** — no OpenAI API key needed.
+
+If the run is interrupted (Ctrl-C, crash, budget), running it again **resumes**: finished work replays instantly, only unfinished nodes call Codex again.
+
+## Why this is more than "an engine"
+
+A normal Codex turn is linear. `dongt` makes Codex orchestrate:
+
+- **parallel fan-out** — one sub-agent per file / hypothesis / item, all at once,
+- **content-addressed resume** — re-run = free replay of completed work,
+- **journaling / audit** — every node + token usage recorded in `.dongt/journal/*.jsonl`,
+- **soft token budget**, deterministic control flow, schema-validated outputs.
+
+## Manual use (optional)
+
+You can also run a workflow file directly:
 
 ```bash
-npm run example
+dongt run path/to/my.workflow.ts                 # default backend: codex-sdk (your membership)
+dongt run path/to/my.workflow.ts --backend fake  # no network, for testing
 ```
 
-Expected shape:
-
-```json
-{
-  "ship": true,
-  "summary": "ship guarded timeout fix"
-}
-```
-
-## Run a workflow
-
-For a workflow module that exports `default async function workflow(ctx)`, run this no-network CLI example:
-
-```bash
-npx tsx engine/cli.ts run examples/pong.workflow.ts --journal /tmp/codex-workflow-pong.jsonl
-```
-
-For real Codex work, use the same form with `--backend codex-sdk` and your workflow path.
-
-CLI flags:
-
-- `--backend name`: override `defaultBackend` for this run.
-- `--config path`: read an engine config JSON file. Defaults to `codex.config.json`.
-- `--journal path`: choose the replay journal. Existing journals are reused automatically.
-
-`codex-engine run` is also exposed as the package bin when this project is linked or installed as a package.
-
-## Config
-
-Example `codex.config.json`:
-
-```json
-{
-  "defaultBackend": "codex-sdk",
-  "autoRoute": true,
-  "concurrency": 4,
-  "seed": 123456,
-  "estimatedTokensPerCall": 1000,
-  "budget": {
-    "maxTokens": 400000,
-    "maxNodes": 50,
-    "onExceeded": "throw"
-  },
-  "adapters": {
-    "codexSdk": {},
-    "codexExec": {},
-    "openaiResponses": {}
-  }
-}
-```
-
-Common fields:
-
-- `defaultBackend`: `codex-sdk`, `codex-exec`, `openai-responses`, or `fake`.
-- `autoRoute`: when true, pure schema-only nodes may route to `openai-responses`.
-- `concurrency`: max active backend calls.
-- `hardMaxConcurrency`, `providerRateBudget`: inputs to default concurrency when `concurrency` is omitted.
-- `journalPath`: default journal path. CLI `--journal` overrides it.
-- `seed`: seed for deterministic `ctx.now()` / `ctx.random()` and shadowed workflow globals.
-- `defaultModel`: model passed to real adapters when a node does not set `model`.
-- `estimatedTokensPerCall`: soft-budget reservation before an adapter call.
-- `timeoutMs`: default per-agent timeout.
-- `transientRetries`, `transientBaseMs`: transient 429/5xx/network retry policy.
-- `budget.maxTokens`, `budget.maxNodes`, `budget.onExceeded`: soft budget behavior. `onExceeded` is `throw`, `skip`, or `downgrade`.
-- `adapters.codexSdk`: passed to `new Codex(...)`.
-- `adapters.codexExec`: supports adapter options such as `codexPath`, `env`, and `graceWindowMs`.
-- `adapters.openaiResponses`: passed to `new OpenAI(...)`.
-- `adapters.fake`: scripted fake responses for tests.
-
-## Write a workflow
+A workflow is a single file that exports a default function. The skill generates these for you, but here is the shape (import-free, plain JSON Schema):
 
 ```ts
-import { z } from "zod";
-import type { WorkflowContext } from "./engine/index.ts";
-
-export default async function workflow(ctx: WorkflowContext) {
-  const { agent, parallel, pipeline, phase, log, budget } = ctx;
-
-  budget.configure({ maxTokens: 100_000, maxNodes: 20, onExceeded: "throw" });
-
-  const Pick = z.object({ files: z.array(z.string()) }).strict();
-  const Finding = z.object({ file: z.string(), notes: z.string() }).strict();
-  const Summary = z.object({ file: z.string(), summary: z.string() }).strict();
-
-  const triage = await phase("triage", async () => agent<{ files: string[] }>(
-    "Pick two files to inspect. Return JSON.",
-    { schema: Pick, pure: true, kind: "classify" },
-  ));
-
-  log("triage complete", triage.output);
-
-  const findings = await parallel(triage.output.files.map((file) => async () => (
-    await agent(`Inspect ${file}. Return finding JSON.`, {
-      schema: Finding,
-      cwd: process.cwd(),
-      sandbox: "read-only",
-    })
-  ).output));
-
-  return pipeline(findings.filter(Boolean),
-    async (finding) => (await agent(`Summarize ${JSON.stringify(finding)}.`, {
-      schema: Summary,
-      pure: true,
-      kind: "judge",
-    })).output,
+export default async function workflow(ctx) {
+  const { agent, parallel, phase, log } = ctx;
+  const Schema = {
+    type: "object", additionalProperties: false,
+    required: ["file", "suspect", "confidence"],
+    properties: { file: { type: "string" }, suspect: { type: "string" }, confidence: { type: "number" } },
+  };
+  const files = ["src/auth/login.ts", "src/auth/session.ts"];
+  const findings = await phase("investigate", async () =>
+    parallel(files.map((file) => async () =>
+      (await agent(`Investigate ${file} for the login bug; report the suspect + 0..1 confidence.`,
+        { schema: Schema, sandbox: "read-only" })).output))
   );
+  log("findings", findings);
+  return { findings: findings.filter((f) => f && f.confidence >= 0.5) };
 }
 ```
 
-Important node options:
+Full API + rules: `codex-skill/references/engine-api.md`.
 
-- `schema`: Zod or JSON Schema. The model receives a strict adapter schema; local Ajv validates the full schema.
-- `backend`: pin a node to one backend.
-- `pure: true` / `kind: "extract" | "classify" | "judge"`: explicit signal that a schema-only node may use the cheap route.
-- `cwd`: real working directory for file-aware nodes.
-- `sandbox`: `read-only`, `workspace-write`, or `danger-full-access`.
-- `threadId`: backend-local hot resume handle.
-- `timeoutMs`, `retries`, `nodeKey`: per-node controls.
+## Engine primitives
 
-Use `ctx.now()` and `ctx.random()` for workflow control flow. Do not use wall-clock time or ambient RNG to decide which nodes exist.
+`ctx.agent(prompt, opts)` (one sub-task), `ctx.parallel(thunks)` (barrier fan-out), `ctx.pipeline(items, ...stages)` (per-item, no barrier between stages), `ctx.phase(title, body)`, `ctx.log(msg, data)`, `ctx.now()` / `ctx.random()` (deterministic), `ctx.budget`.
+
+Key `agent` opts: `schema` (Zod or JSON Schema → strict JSON output), `sandbox` (`read-only` | `workspace-write` | `danger-full-access`), `cwd` (required for writable nodes), `backend`, `timeoutMs`, `retries`, `nodeKey`.
+
+Use `ctx.now()` / `ctx.random()` for control flow — never wall-clock or ambient RNG to decide which nodes exist.
 
 ## Backends and routing
 
-- `codex-sdk`: default, in-process SDK thread. Best for normal Codex agent work.
-- `codex-exec`: spawns `codex exec --json`. Best when you want process isolation.
-- `openai-responses`: direct Responses API with strict JSON schema. Best for pure extraction/classification/judging.
-- `fake`: deterministic test adapter. No network.
+- `codex-sdk` (default): in-process Codex SDK thread, uses your membership login.
+- `codex-exec`: spawns `codex exec --json` for hard process isolation.
+- `openai-responses`: direct Responses API with strict JSON — **needs `OPENAI_API_KEY`** (separate from a Codex membership). Optional cheap fast-path.
+- `fake`: deterministic, no network — for tests.
 
-Routing order:
+Routing: `opts.backend` wins → else (if `autoRoute`) an explicitly `pure`/`kind` schema-only node may use `openai-responses`, an `isolate:true` node uses `codex-exec` → else `defaultBackend`. The engine never infers "pure" from a missing `cwd`.
 
-1. `opts.backend` wins.
-2. If `autoRoute !== false`, pure schema-only nodes may route to `openai-responses`.
-3. Otherwise `config.defaultBackend` is used.
+## Config
 
-The engine never infers “pure” from a missing `cwd`. Mark pure nodes explicitly.
+Per-project overrides go in `.dongt/config.json`; the engine-level config (also used by `createEngine`) supports:
+
+- `defaultBackend`, `autoRoute`, `concurrency`, `hardMaxConcurrency`, `providerRateBudget`
+- `seed` (deterministic `now`/`random` + shadows), `defaultModel`, `estimatedTokensPerCall`, `timeoutMs`
+- `transientRetries`, `transientBaseMs` (429/5xx/network retry, separate from schema repair)
+- `budget.maxTokens` / `budget.maxNodes` / `budget.onExceeded` (`throw` | `skip` | `downgrade`)
+- `adapters.codexSdk` (→ `new Codex`), `adapters.codexExec` (`codexPath`, `env`, `graceWindowMs`), `adapters.openaiResponses` (→ `new OpenAI`), `adapters.fake`
 
 ## Resume / replay
 
-Resume is automatic. If the journal exists and the manifest matches, completed terminal nodes are replayed by `cacheKey`.
-
-The key includes prompt, validation schema, model, resolved cwd, sandbox, structural position, and dependency `prevKey`. It excludes backend identity, thread id, signal, timestamps, jitter, env, wall-clock, and repair text.
-
-Replayed nodes do not call the backend and do not charge budget again.
-
-## Budget
-
-Budgets are best-effort soft limits:
-
-1. reserve an estimate before taking a backend slot;
-2. run the adapter;
-3. reconcile with actual usage.
-
-Billable input is `input_tokens - cached_input_tokens`. `downgrade` is only valid for schema-only nodes.
+Automatic. Completed terminal nodes replay by `cacheKey` (prompt + validation schema + model + resolved cwd + sandbox + structural position + dependency `prevKey`). The key excludes backend identity, thread id, signal, timestamps, jitter, env, wall-clock, and repair text. Replayed nodes don't call the backend or charge budget. A torn trailing journal line is dropped; a node whose journal ends on a non-terminal repair record re-runs.
 
 ## Determinism boundary
 
-During `engine.run()`, the workflow gets seeded shadows for `Date`, `Date.now`, `Math.random`, `performance.now`, `process.hrtime`, `crypto.randomUUID`, and `crypto.getRandomValues` where available.
+During a run, the workflow gets seeded shadows for `Date`, `Date.now`, `Math.random`, `performance.now`, `process.hrtime`, and `crypto.randomUUID`/`getRandomValues`. Best-effort: deps that captured real globals at import time can still leak — keep control flow on `ctx.now()`/`ctx.random()`.
 
-This is best-effort. Dependencies that captured real globals at import time can still leak nondeterminism. Workflow authors should keep control flow on `ctx.now()` and `ctx.random()`.
-
-## Real backend smoke checks
-
-Run one real backend smoke test:
+## Verify it on real Codex
 
 ```bash
-npx tsx scripts/smoke.ts --backend codex-sdk
-```
-
-Other backends:
-
-```bash
+npx tsx scripts/smoke.ts --backend codex-sdk     # one real structured call
 npx tsx scripts/smoke.ts --backend codex-exec
-npx tsx scripts/smoke.ts --backend openai-responses
 ```
+Missing credentials prints `SMOKE_SKIPPED` and exits 0.
 
-Missing credentials or a missing CLI prints `SMOKE_SKIPPED` and exits 0.
-
-For a real replay demo with `codex-sdk`:
-
-```bash
-RUN_DIR=$(mktemp -d /tmp/codex-workflow-e2e-run-XXXXXX)
-npx tsx scripts/e2e.ts --run-dir "$RUN_DIR" --pause-after-parallel
-# Press Ctrl-C after READY_FOR_INTERRUPT.
-npx tsx scripts/e2e.ts --run-dir "$RUN_DIR"
-```
-
-The second run prints completed parallel nodes with `replayed:true` and only calls the backend for unfinished nodes.
-
-## Testing with FakeAdapter
-
-Unit tests use `FakeAdapter`; real backends are not part of the default test suite.
+## Develop / test
 
 ```bash
 npm run typecheck
-npm test
+npm test            # FakeAdapter only, no network
 ```
 
-Fake adapter config example:
-
-```ts
-const engine = createEngine({
-  defaultBackend: "fake",
-  autoRoute: false,
-  adapters: {
-    fake: {
-      responses: [{ ok: true }],
-    },
-  },
-});
-```
-
-Current regression suite covers keyed replay, dependency invalidation, schema repair, transient retry, writable cwd protection, deterministic shadows, soft budget skip, and crash-residue journal loading.
+Regression suite covers keyed replay, dependency-subtree invalidation, schema repair, transient retry, writable-cwd protection, deterministic shadows + stable cache keys, soft-budget skip, crash-residue / non-terminal-repair journal recovery, backend routing, and the CLI (`install-codex` + `run`).
