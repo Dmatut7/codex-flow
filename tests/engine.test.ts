@@ -277,6 +277,55 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("namespaces returned thread ids by backend and strips the namespace before adapter resume", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const seenThreadIds: Array<string | undefined> = [];
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: {
+        fake: {
+          resolver: async ({ prompt, opts }) => {
+            seenThreadIds.push(opts.threadId);
+            return { prompt };
+          },
+        },
+      },
+    });
+
+    const result = await engine.run(async ({ agent }) => {
+      const first = await agent("start", { backend: "fake" });
+      const second = await agent("resume", { backend: "fake", threadId: first.threadId });
+      return { first, second };
+    });
+
+    assert.equal(result.first.threadId, "fake:fake-1");
+    assert.equal(result.second.threadId, "fake:fake-2");
+    assert.deepEqual(seenThreadIds, [undefined, "fake-1"]);
+    const nodes = (await readJsonl(journalPath)).filter((line) => line.type === "node");
+    assert.equal(nodes[0].threadId, "fake:fake-1");
+    assert.equal(nodes[1].threadId, "fake:fake-2");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("rejects thread ids from a different backend before adapter execution", async () => {
+    const dir = await tempDir();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: path.join(dir, "journal.jsonl"),
+    });
+
+    await assert.rejects(
+      () => engine.run(async ({ agent }) => agent("wrong resume", { backend: "fake", threadId: "codex-sdk:thread-1" })),
+      /threadId belongs to backend codex-sdk, not fake/,
+    );
+    assert.equal(engine.adapters.fake.calls.length, 0);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("retries transient adapter errors without consuming schema repair attempts", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

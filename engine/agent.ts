@@ -59,7 +59,8 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
   }
   if (action === "downgrade") backend = "openai-responses";
 
-  const normalized = await runtime.normalizeOpts({ ...opts, schema: undefined }, backend, key, cacheCwd, schema);
+  const adapterThreadId = threadIdForAdapter(opts.threadId, backend, runtime.adapters);
+  const normalized = await runtime.normalizeOpts({ ...opts, threadId: adapterThreadId, schema: undefined }, backend, key, cacheCwd, schema);
   const adapter = runtime.adapters[backend];
   if (!adapter) throw new Error(`Unknown backend: ${backend}`);
 
@@ -82,7 +83,7 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
       const adapterResult = await runAdapterWithTransientRetry(runtime, adapter, currentPrompt, normalized, abortController.signal, key);
       lastUsage = adapterResult.usage;
       lastRaw = adapterResult.finalResponse;
-      threadId = adapterResult.threadId;
+      threadId = namespaceThreadId(backend, adapterResult.threadId);
       runtime.budget.reconcile(lastUsage, estimate);
     } catch (error) {
       runtime.budget.reconcile(ZERO_USAGE, estimate);
@@ -147,6 +148,28 @@ function allocateStructuralPosition(scope: Scope, nodeKey?: string): StructuralP
 
 function makeResult<T>(output: T, raw: string, usage: Usage, backend: string, replayed: boolean, threadId: string | undefined, status: "ok" | "error"): AgentResult<T> {
   return { output, raw, usage, backend, replayed, threadId, status };
+}
+
+function threadIdForAdapter(threadId: string | undefined, backend: string, adapters: Record<string, unknown>): string | undefined {
+  if (!threadId) return undefined;
+  const parsed = parseNamespacedThreadId(threadId, adapters);
+  if (!parsed) return threadId;
+  if (parsed.backend !== backend) throw new Error(`threadId belongs to backend ${parsed.backend}, not ${backend}`);
+  return parsed.id;
+}
+
+function namespaceThreadId(backend: string, threadId: string | undefined): string | undefined {
+  if (!threadId) return undefined;
+  if (threadId.startsWith(`${backend}:`)) return threadId;
+  return `${backend}:${threadId}`;
+}
+
+function parseNamespacedThreadId(threadId: string, adapters: Record<string, unknown>): { backend: string; id: string } | undefined {
+  const separator = threadId.indexOf(":");
+  if (separator <= 0) return undefined;
+  const backend = threadId.slice(0, separator);
+  if (!(backend in adapters)) return undefined;
+  return { backend, id: threadId.slice(separator + 1) };
 }
 
 function appendTerminal<T>(runtime: EngineRuntime, key: string, backend: string, structuralPosition: StructuralPosition, prevKey: string | null, result: AgentResult<T>, status: "terminal" | "timeout" | "failed"): void {
