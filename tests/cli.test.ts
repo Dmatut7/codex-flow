@@ -76,6 +76,7 @@ describe("codex-flow cli", () => {
 
     assert.match(workflow, /on:\s*\n\s+push:\s*\n\s+tags:\s*\n\s+- ['"]v\*['"]/);
     assert.match(workflow, /id-token:\s*write/);
+    assert.match(workflow, /npm install -g npm@\^11\.10\.0/);
     assert.match(workflow, /npm publish --access public/);
     assert.doesNotMatch(workflow, /NODE_AUTH_TOKEN|NPM_TOKEN|_authToken/);
   });
