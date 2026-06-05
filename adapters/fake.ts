@@ -31,7 +31,7 @@ export class FakeAdapter implements AgentAdapter {
   }
 
   private async nextResponse(call: FakeCall): Promise<unknown> {
-    if (!this.responses.length) return { prompt: call.prompt };
+    if (!this.responses.length) return call.opts.schema ? valueForSchema(call.opts.schema.validationSchema) : { prompt: call.prompt };
     const response = this.responses.shift();
     if (typeof response === "function") return response(call);
     return response;
@@ -49,4 +49,20 @@ export class FakeAdapter implements AgentAdapter {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function valueForSchema(schema: any): unknown {
+  if (!schema || typeof schema !== "object") return { ok: true };
+  if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
+  const type = Array.isArray(schema.type) ? schema.type.find((item: string) => item !== "null") : schema.type;
+  if (type === "string") return "value";
+  if (type === "number" || type === "integer") return 0.8;
+  if (type === "boolean") return true;
+  if (type === "array") return [valueForSchema(schema.items)];
+  if (type === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(schema.properties ?? {})) out[key] = valueForSchema(value);
+    return out;
+  }
+  return { ok: true };
 }

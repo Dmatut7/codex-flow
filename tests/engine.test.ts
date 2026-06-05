@@ -146,6 +146,39 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("default fake backend returns schema-shaped output", async () => {
+    const dir = await tempDir();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: path.join(dir, "journal.jsonl"),
+    });
+    const Schema = {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "count", "ok", "items", "status"],
+      properties: {
+        name: { type: "string" },
+        count: { type: "number" },
+        ok: { type: "boolean" },
+        items: { type: "array", items: { type: "string" } },
+        status: { enum: ["pass", "warn"] },
+      },
+    };
+
+    const result = await engine.run(async ({ agent }) => agent("schema fake", { backend: "fake", schema: Schema, retries: 0 }));
+
+    assert.equal(result.status, "ok");
+    assert.deepEqual(result.output, {
+      name: "value",
+      count: 0.8,
+      ok: true,
+      items: ["value"],
+      status: "pass",
+    });
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("retries transient adapter errors without consuming schema repair attempts", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

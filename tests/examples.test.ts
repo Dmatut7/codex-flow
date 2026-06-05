@@ -13,22 +13,6 @@ async function workflowFiles(): Promise<string[]> {
   return entries.filter((entry) => entry.endsWith(".workflow.ts")).sort();
 }
 
-function valueForSchema(schema: any): unknown {
-  if (!schema || typeof schema !== "object") return { ok: true };
-  if (schema.enum?.length) return schema.enum[0];
-  const type = Array.isArray(schema.type) ? schema.type.find((item: string) => item !== "null") : schema.type;
-  if (type === "string") return "value";
-  if (type === "number" || type === "integer") return 0.8;
-  if (type === "boolean") return true;
-  if (type === "array") return [valueForSchema(schema.items)];
-  if (type === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(schema.properties ?? {})) out[key] = valueForSchema(value);
-    return out;
-  }
-  return { ok: true };
-}
-
 describe("example workflows", () => {
   it("are import-free so users can copy them into any project", async () => {
     for (const file of await workflowFiles()) {
@@ -48,11 +32,6 @@ describe("example workflows", () => {
           defaultBackend: "fake",
           autoRoute: false,
           journalPath: path.join(dir, "journal.jsonl"),
-          adapters: {
-            fake: {
-              resolver: ({ opts }) => valueForSchema(opts.schema?.validationSchema),
-            },
-          },
         });
         const result = await engine.run(mod.default);
         assert.notEqual(result, undefined, `${file} should return a result`);
