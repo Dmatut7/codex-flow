@@ -18,7 +18,7 @@ export class Journal {
       return;
     }
     this.load();
-    const matches = this.manifest && this.manifest.engineVersion === expected.engineVersion && this.manifest.scriptHash === expected.scriptHash && this.manifest.defaultBackend === expected.defaultBackend && this.manifest.seed === expected.seed;
+    const matches = this.manifest && this.manifest.engineVersion === expected.engineVersion && this.manifest.scriptHash === expected.scriptHash && this.manifest.seed === expected.seed;
     if (!matches) {
       this.replayMap.clear();
       this.lastByKey.clear();

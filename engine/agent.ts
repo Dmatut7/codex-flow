@@ -26,12 +26,15 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
   const schema = normalizeSchema(opts.schema);
   const backendInitial = runtime.resolveBackend(opts);
   const cacheCwd = opts.cwd ? path.resolve(opts.cwd) : undefined;
+  const cacheAdditionalDirectories = opts.additionalDirectories?.map((dir) => path.resolve(dir)).sort();
   const sandbox = opts.sandbox ?? "read-only";
   const prevKey = scope.currentPrevKey ?? null;
   const key = sha256({
     prompt,
     schema: schema?.validationSchema,
     model: opts.model ?? runtime.config.defaultModel,
+    modelReasoningEffort: opts.modelReasoningEffort,
+    additionalDirectories: cacheAdditionalDirectories,
     cwd: cacheCwd,
     sandbox,
     structuralPosition,
@@ -84,7 +87,7 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
       runtime.budget.reconcile(ZERO_USAGE, estimate);
       if (error instanceof ConcurrentWritableCwdError) throw error;
       const status = abortController.signal.aborted || error instanceof TimeoutError ? "timeout" : "failed";
-      const failed = makeResult<T>(null as T, "", ZERO_USAGE, backend, false, threadId, "error");
+      const failed = makeResult<T>(null as T, errorMessage(error), ZERO_USAGE, backend, false, threadId, "error");
       appendTerminal(runtime, key, backend, structuralPosition, prevKey, failed, status);
       scope.currentPrevKey = key;
       return failed;

@@ -11,15 +11,22 @@ const REAL_BACKENDS = new Set<RealBackend>(["codex-sdk", "codex-exec", "openai-r
 
 function valueAfter(argv: string[], name: string): string | undefined {
   const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : undefined;
+  if (i < 0) return undefined;
+  const value = argv[i + 1];
+  if (!value || value.startsWith("--")) {
+    console.error(`SMOKE_FAILED ${name} requires a value`);
+    console.error("usage: codex-flow smoke --backend codex-sdk|codex-exec|openai-responses");
+    process.exit(2);
+  }
+  return value;
 }
 
 function parseBackend(argv: string[]): RealBackend {
   const value = valueAfter(argv, "--backend") ?? "codex-sdk";
   if (!REAL_BACKENDS.has(value as RealBackend)) {
-    console.log(`SMOKE_SKIPPED invalid backend: ${value ?? "<missing>"}`);
-    console.log("usage: codex-flow smoke --backend codex-sdk|codex-exec|openai-responses");
-    process.exit(0);
+    console.error(`SMOKE_FAILED invalid backend: ${value ?? "<missing>"}`);
+    console.error("usage: codex-flow smoke --backend codex-sdk|codex-exec|openai-responses");
+    process.exit(2);
   }
   return value as RealBackend;
 }
@@ -37,6 +44,10 @@ function unavailableHint(backend: RealBackend): string {
   if (backend === "codex-exec") return "Install/login to codex CLI, or provide CODEX_API_KEY.";
   if (backend === "openai-responses") return "Set OPENAI_API_KEY, or configure adapters.openaiResponses with credentials.";
   return "Login to codex CLI or provide CODEX_API_KEY for @openai/codex-sdk.";
+}
+
+function unavailableReason(message: string): boolean {
+  return /api.?key|OPENAI_API_KEY|CODEX_API_KEY|auth|login|not logged|unauthori[sz]ed|forbidden|401|403|credentials|quota|codex CLI not found|not runnable|ENOENT|spawn .*ENOENT/i.test(message);
 }
 
 export async function smoke(argv: string[]): Promise<void> {
@@ -72,15 +83,33 @@ export async function smoke(argv: string[]): Promise<void> {
     ));
 
     if (result.status !== "ok") {
+      const reason = result.raw || "backend returned no valid structured result";
+      const status = unavailableReason(reason) ? "SMOKE_SKIPPED" : "SMOKE_FAILED";
       console.log(JSON.stringify({
-        status: "SMOKE_SKIPPED",
-        reason: "backend returned no valid structured result",
+        status,
+        reason,
         backend: result.backend,
         threadId: result.threadId ?? null,
         usage: result.usage,
         journalPath,
         hint: unavailableHint(backend),
       }, null, 2));
+      if (status === "SMOKE_FAILED") process.exitCode = 1;
+      return;
+    }
+
+    if (result.output.pong !== true || usageTotal(result.usage) <= 0) {
+      console.log(JSON.stringify({
+        status: "SMOKE_FAILED",
+        reason: result.output.pong !== true ? "backend returned the wrong structured output" : "backend returned zero usage",
+        backend: result.backend,
+        threadId: result.threadId ?? null,
+        output: result.output,
+        usage: result.usage,
+        usageTotal: usageTotal(result.usage),
+        journalPath,
+      }, null, 2));
+      process.exitCode = 1;
       return;
     }
 
@@ -95,11 +124,14 @@ export async function smoke(argv: string[]): Promise<void> {
       journalPath,
     }, null, 2));
   } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const status = unavailableReason(reason) ? "SMOKE_SKIPPED" : "SMOKE_FAILED";
     console.log(JSON.stringify({
-      status: "SMOKE_SKIPPED",
-      reason: error instanceof Error ? error.message : String(error),
+      status,
+      reason,
       backend,
       hint: unavailableHint(backend),
     }, null, 2));
+    if (status === "SMOKE_FAILED") process.exitCode = 1;
   }
 }

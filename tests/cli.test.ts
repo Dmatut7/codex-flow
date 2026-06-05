@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -100,6 +100,41 @@ describe("codex-flow cli", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("run honors --cwd and --seed", async () => {
+    const project = await mkdtemp(path.join(tmpdir(), "codex-flow-cwd-project-"));
+    const outside = await mkdtemp(path.join(tmpdir(), "codex-flow-cwd-outside-"));
+    const wf = path.join(project, ".codex-flow", "generated", "cwd.workflow.ts");
+    await mkdir(path.dirname(wf), { recursive: true });
+    await writeFile(
+      wf,
+      "export default async function workflow(ctx){ return { cwd: process.cwd(), random: ctx.random() }; }\n",
+      "utf8",
+    );
+
+    const res = spawnSync("node", [
+      binPath,
+      "run",
+      ".codex-flow/generated/cwd.workflow.ts",
+      "--cwd",
+      project,
+      "--backend",
+      "fake",
+      "--seed",
+      "123",
+    ], {
+      encoding: "utf8",
+      cwd: outside,
+    });
+
+    assert.equal(res.status, 0, res.stderr);
+    const body = JSON.parse(res.stdout);
+    assert.equal(body.cwd, realpathSync(project));
+    assert.equal(body.random, 0.7872516233474016);
+    assert.ok(existsSync(path.join(project, ".codex-flow", "journal", "cwd.jsonl")), "default journal should be under --cwd");
+    await rm(project, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  });
+
   it("doctor checks the local fake backend and reports missing skill without failing", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-doctor-"));
     const res = spawnSync("node", [binPath, "doctor", "--json"], {
@@ -175,5 +210,31 @@ describe("codex-flow cli", () => {
     assert.ok(existsSync(path.join(dir, ".codex-flow", "generated", "starter.workflow.ts")), "starter workflow should exist");
     assert.ok(existsSync(path.join(dir, ".codex-flow", "journal", "starter.jsonl")), "starter journal should exist");
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it("try does not overwrite an existing starter workflow", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-try-"));
+    const wf = path.join(dir, ".codex-flow", "generated", "starter.workflow.ts");
+    await mkdir(path.dirname(wf), { recursive: true });
+    const custom = "export default async function workflow(){ return { custom: true }; }\n";
+    await writeFile(wf, custom, "utf8");
+
+    const res = spawnSync("node", [binPath, "try"], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(await readFile(wf, "utf8"), custom);
+    assert.match(res.stdout, /Using existing starter workflow/);
+    assert.match(res.stdout, /"custom": true/);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("smoke fails nonzero for invalid backend names", () => {
+    const res = spawnSync("node", [binPath, "smoke", "--backend", "fake"], { encoding: "utf8" });
+    assert.notEqual(res.status, 0);
+    assert.match(res.stdout + res.stderr, /SMOKE_FAILED/);
+    assert.match(res.stdout + res.stderr, /codex-sdk\|codex-exec\|openai-responses/);
   });
 });

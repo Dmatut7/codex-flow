@@ -54,6 +54,7 @@
     "engine",
     "adapters",
     "codex-skill",
+    "codex-skill-business-audit",
     "README.md",
     "examples",
     "docs",

@@ -547,4 +547,95 @@ describe("dynamic workflow engine", () => {
     assert.equal(replayEngine.adapters.fake.calls.length, 0);
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("replays a completed node even when the default backend changes", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [{ ok: true }] } },
+    });
+
+    await first.run(async ({ agent }) => agent("stable backend-agnostic node"));
+
+    const replayEngine = createEngine({
+      defaultBackend: "openai-responses",
+      autoRoute: false,
+      journalPath,
+    });
+    const replay = await replayEngine.run(async ({ agent }) => agent("stable backend-agnostic node"));
+
+    assert.equal(replay.replayed, true);
+    assert.deepEqual(replay.output, { ok: true });
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("resets deterministic counters for each run on the same engine", async () => {
+    const dir = await tempDir();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      seed: 123,
+      journalPath: path.join(dir, "journal.jsonl"),
+    });
+    const workflow = async ({ now, random }: any) => [now(), random(), now(), random()];
+
+    const first = await engine.run(workflow);
+    const second = await engine.run(workflow);
+
+    assert.deepEqual(second, first);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("imports workflow files under deterministic shadows", async () => {
+    const runOnce = async (): Promise<number> => {
+      const dir = await tempDir();
+      const wf = path.join(dir, "top-level.workflow.ts");
+      await writeFile(wf, "const value = Math.random(); export default async function workflow(){ return value; }\n", "utf8");
+      const engine = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        seed: 456,
+        journalPath: path.join(dir, "journal.jsonl"),
+      });
+      const result = await engine.run<number>(wf);
+      await rm(dir, { recursive: true, force: true });
+      return result;
+    };
+
+    assert.equal(await runOnce(), await runOnce());
+  });
+
+  it("includes additional directories and reasoning effort in cache keys", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const runOnce = async (additionalDirectories: string[], modelReasoningEffort: string, marker: number) => {
+      const engine = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        journalPath,
+        adapters: { fake: { responses: [{ marker }] } },
+      });
+      const result = await engine.run(async ({ agent }) => agent("same prompt", {
+        backend: "fake",
+        additionalDirectories,
+        modelReasoningEffort,
+      }));
+      return { engine, result };
+    };
+
+    await runOnce([path.join(dir, "a")], "low", 1);
+    const changedDir = await runOnce([path.join(dir, "b")], "low", 2);
+    const changedEffort = await runOnce([path.join(dir, "b")], "high", 3);
+
+    assert.equal(changedDir.result.replayed, false);
+    assert.deepEqual(changedDir.result.output, { marker: 2 });
+    assert.equal(changedEffort.result.replayed, false);
+    assert.deepEqual(changedEffort.result.output, { marker: 3 });
+    assert.equal(changedDir.engine.adapters.fake.calls.length, 1);
+    assert.equal(changedEffort.engine.adapters.fake.calls.length, 1);
+    await rm(dir, { recursive: true, force: true });
+  });
 });

@@ -3,7 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SKILL_NAME = "dynamic-workflow";
+const SKILLS = [
+  { src: "../codex-skill", name: "dynamic-workflow" },
+  { src: "../codex-skill-business-audit", name: "business-defect-audit" },
+];
 
 function codexHome(): string {
   return process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
@@ -16,22 +19,22 @@ function valueAfter(argv: string[], name: string): string | undefined {
 
 /** Copy the bundled codex-skill/ folder into the user's Codex skills dir. */
 export async function installCodex(argv: string[]): Promise<void> {
-  const source = fileURLToPath(new URL("../codex-skill", import.meta.url));
-  if (!existsSync(source)) {
-    console.error(`codex-flow: bundled skill not found at ${source}`);
-    process.exit(1);
-  }
-
   const explicitDir = valueAfter(argv, "--dir");
   const skillsDir = explicitDir ?? path.join(codexHome(), "skills");
-  const target = path.join(skillsDir, SKILL_NAME);
-
   mkdirSync(skillsDir, { recursive: true });
-  rmSync(target, { recursive: true, force: true });
-  cpSync(source, target, { recursive: true });
 
-  console.log("✓ Installed Codex skill: dynamic-workflow");
-  console.log(`  ${target}`);
+  for (const skill of SKILLS) {
+    const source = fileURLToPath(new URL(skill.src, import.meta.url));
+    if (!existsSync(source)) {
+      console.error(`codex-flow: bundled skill not found at ${source}`);
+      process.exit(1);
+    }
+    const target = path.join(skillsDir, skill.name);
+    rmSync(target, { recursive: true, force: true });
+    cpSync(source, target, { recursive: true });
+    console.log(`✓ Installed Codex skill: ${skill.name}`);
+    console.log(`  ${target}`);
+  }
   console.log("");
   console.log("Now restart Codex, then in ANY project just say, e.g.:");
   console.log('  「用动态工作流帮我排查登录失败的问题」');

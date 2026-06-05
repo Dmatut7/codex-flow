@@ -24,7 +24,7 @@ class WorkflowEngine implements Engine, EngineRuntime {
   readonly semaphore: Semaphore;
   readonly activeWritableCwds = new Set<string>();
   readonly scopeStorage = new AsyncLocalStorage<Scope>();
-  readonly determinism: Determinism;
+  determinism: Determinism;
   readonly budget: WorkflowBudget;
   readonly ctx: WorkflowContext;
 
@@ -40,7 +40,7 @@ class WorkflowEngine implements Engine, EngineRuntime {
     this.adapters = createAdapters(this.config);
     const width = config.concurrency ?? defaultConcurrency(os.cpus().length, config.providerRateBudget, config.hardMaxConcurrency ?? 8);
     this.semaphore = new Semaphore(width);
-    this.journal = new Journal(config.journalPath ?? path.join(process.cwd(), ".codex-workflow", "journal.jsonl"));
+    this.journal = new Journal(config.journalPath ?? path.join(process.cwd(), ".codex-flow", "journal.jsonl"));
     this.determinism = new Determinism(this.config.seed);
     this.budget = new WorkflowBudget(config.budget);
     const topologies = makeTopologies(this);
@@ -57,16 +57,20 @@ class WorkflowEngine implements Engine, EngineRuntime {
   }
 
   async run<T>(script: string | ((ctx: WorkflowContext) => Promise<T> | T)): Promise<T> {
-    const { fn, hash } = await loadScript<T>(script);
+    this.determinism = new Determinism(this.config.seed);
+    const prepared = await prepareScript<T>(script);
     this.journal.init({
       engineVersion: this.config.engineVersion,
-      scriptHash: hash,
+      scriptHash: prepared.hash,
       defaultBackend: this.config.defaultBackend,
       seed: this.config.seed,
     });
     this.budget.loadTotals(this.journal.runningTotals());
     const root = makeScope(undefined, { phase: [], currentPrevKey: null });
-    return this.determinism.withShadowedGlobals(() => this.withScope(root, async () => fn(this.ctx)));
+    return this.determinism.withShadowedGlobals(async () => {
+      const fn = await prepared.load();
+      return this.withScope(root, async () => fn(this.ctx));
+    });
   }
 
   currentScope(): Scope {
@@ -118,14 +122,20 @@ export async function runWorkflow<T>(script: string | ((ctx: WorkflowContext) =>
   return createEngine(config).run(script);
 }
 
-async function loadScript<T>(script: string | ((ctx: WorkflowContext) => Promise<T> | T)): Promise<{ fn: (ctx: WorkflowContext) => Promise<T> | T; hash: string }> {
-  if (typeof script === "function") return { fn: script, hash: sha256(script.toString()) };
+async function prepareScript<T>(script: string | ((ctx: WorkflowContext) => Promise<T> | T)): Promise<{ hash: string; load: () => Promise<(ctx: WorkflowContext) => Promise<T> | T> }> {
+  if (typeof script === "function") return { hash: sha256(script.toString()), load: async () => script };
   const absolute = path.resolve(script);
   const source = await readFile(absolute, "utf8");
-  const mod = await import(pathToFileURL(absolute).href + `?t=${Date.now()}`);
-  const fn = mod.default ?? mod.workflow;
-  if (typeof fn !== "function") throw new Error(`Workflow script ${script} must export a default function`);
-  return { fn, hash: sha256(source) };
+  const hash = sha256(source);
+  return {
+    hash,
+    load: async () => {
+      const mod = await import(pathToFileURL(absolute).href + `?v=${hash}`);
+      const fn = mod.default ?? mod.workflow;
+      if (typeof fn !== "function") throw new Error(`Workflow script ${script} must export a default function`);
+      return fn;
+    },
+  };
 }
 
 export type { AgentOpts, AgentResult, WorkflowContext, EngineConfig, Usage } from "./types.ts";
