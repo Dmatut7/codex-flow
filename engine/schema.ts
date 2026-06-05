@@ -5,7 +5,7 @@ import type { NormalizedSchema } from "../adapters/types.ts";
 const UNSUPPORTED_FOR_MODEL = new Set(["minLength", "maxLength", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "pattern", "format"]);
 
 export function normalizeSchema(schema: unknown): NormalizedSchema | undefined {
-  if (!schema) return undefined;
+  if (schema === undefined || schema === null) return undefined;
   const validationSchema = enforceStrictSchema(toJsonSchema(schema));
   rejectUnsupportedValidationKeywords(validationSchema);
   const adapterSchema = stripUnsupportedKeywords(validationSchema);

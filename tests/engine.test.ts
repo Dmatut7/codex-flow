@@ -373,6 +373,13 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("rejects boolean false schemas instead of treating them as absent", () => {
+    assert.throws(
+      () => normalizeSchema(false),
+      /Strict schema root must be an object/,
+    );
+  });
+
   it("enforces strict object schemas inside combinators and definitions", () => {
     const assertRejectsExtraPayload = (payloadSchema: any, extraRoot: Record<string, unknown> = {}) => {
       const schema = normalizeSchema({
