@@ -81,12 +81,61 @@ function enforceStrictSchema(schema: any): any {
     root = { type: "object", properties: { items: root }, required: ["items"], additionalProperties: false };
   }
   if (root.type !== "object") throw new Error("Strict schema root must be an object");
+  root = mergeRootCombinatorProperties(root);
   const stats = { properties: 0, enumValues: 0, maxDepth: 0 };
   const normalized = visit(root, 1, stats);
   if (stats.properties > 100) throw new Error("Strict schema exceeds 100 total properties");
   if (stats.maxDepth > 5) throw new Error("Strict schema exceeds 5 levels of nesting");
   if (stats.enumValues > 500) throw new Error("Strict schema exceeds 500 enum values");
   return normalized;
+}
+
+function mergeRootCombinatorProperties(root: any): any {
+  const out = clone(root);
+  if (Array.isArray(out.allOf)) mergeObjectLikeProperties(out, out.allOf);
+  if (Array.isArray(out.oneOf)) {
+    const keySets = out.oneOf.map(objectLikePropertyKeys).filter(Boolean) as string[][];
+    if (keySets.length > 1 && !keySets.every((keys) => sameStringSet(keys, keySets[0]))) {
+      throw new Error("Strict schema root oneOf object branches must expose the same properties");
+    }
+    mergeObjectLikePropertyNames(out, out.oneOf);
+  }
+  return out;
+}
+
+function mergeObjectLikeProperties(target: any, children: any[]): void {
+  for (const child of children) {
+    if (!isObjectLikeSchema(child)) continue;
+    target.properties = target.properties ?? {};
+    for (const [key, value] of Object.entries(child.properties ?? {})) {
+      if (!Object.prototype.hasOwnProperty.call(target.properties, key)) target.properties[key] = clone(value);
+    }
+  }
+}
+
+function mergeObjectLikePropertyNames(target: any, children: any[]): void {
+  for (const child of children) {
+    if (!isObjectLikeSchema(child)) continue;
+    target.properties = target.properties ?? {};
+    for (const key of Object.keys(child.properties ?? {})) {
+      if (!Object.prototype.hasOwnProperty.call(target.properties, key)) target.properties[key] = {};
+    }
+  }
+}
+
+function objectLikePropertyKeys(schema: any): string[] | undefined {
+  if (!isObjectLikeSchema(schema)) return undefined;
+  return Object.keys(schema.properties ?? {}).sort();
+}
+
+function sameStringSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value, idx) => value === b[idx]);
+}
+
+function isObjectLikeSchema(schema: any): boolean {
+  if (!schema || typeof schema !== "object" || !schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) return false;
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  return schema.type === undefined || types.includes("object");
 }
 
 function visit(node: any, depth: number, stats: { properties: number; enumValues: number; maxDepth: number }): any {

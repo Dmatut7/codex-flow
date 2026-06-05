@@ -405,6 +405,35 @@ describe("dynamic workflow engine", () => {
     });
   });
 
+  it("allows root object combinators without making their properties impossible", () => {
+    const assertRootCombinator = (schemaInput: any) => {
+      const schema = normalizeSchema(schemaInput);
+
+      assert.equal(parseAndValidate(JSON.stringify({ role: "admin" }), schema).ok, true);
+      assert.equal(parseAndValidate(JSON.stringify({ role: "admin", injected: true }), schema).ok, false);
+      assert.deepEqual(Object.keys(schema!.adapterSchema.properties), ["role"]);
+    };
+
+    assertRootCombinator({
+      type: "object",
+      allOf: [{ type: "object", properties: { role: { type: "string" } } }],
+    });
+    assertRootCombinator({
+      type: "object",
+      oneOf: [{ type: "object", properties: { role: { type: "string" } } }],
+    });
+
+    const schema = normalizeSchema({
+      type: "object",
+      oneOf: [
+        { type: "object", properties: { role: { enum: ["admin"] } } },
+        { type: "object", properties: { role: { enum: ["user"] } } },
+      ],
+    });
+    assert.equal(parseAndValidate(JSON.stringify({ role: "admin" }), schema).ok, true);
+    assert.equal(parseAndValidate(JSON.stringify({ role: "user" }), schema).ok, true);
+  });
+
   it("preserves property names that match unsupported adapter keywords", () => {
     const schema = normalizeSchema({
       type: "object",
