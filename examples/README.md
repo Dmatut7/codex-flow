@@ -2,6 +2,8 @@
 
 These examples show what `codex-flow` is meant to unlock for Codex users: maintainer workflows that are too broad for one linear agent turn.
 
+All workflow examples are import-free and use plain JSON Schema, so you can copy them into any project without installing repo-local helpers.
+
 ## Natural-language mode
 
 After installing the bundled Codex skill:
@@ -34,6 +36,14 @@ Fan out PR review into correctness, regression risk, tests/docs, and API/sandbox
 
 ```bash
 codex-flow run examples/pr-review.workflow.ts --backend codex-sdk
+```
+
+### `issue-triage.workflow.ts`
+
+Fan out issue classification and priority calls, then merge them into one maintainer action.
+
+```bash
+codex-flow run examples/issue-triage.workflow.ts --backend codex-sdk
 ```
 
 ### `release-smoke.workflow.ts`

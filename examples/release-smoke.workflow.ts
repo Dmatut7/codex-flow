@@ -1,20 +1,28 @@
-import { z } from "zod";
-import type { WorkflowContext } from "../engine/index.ts";
+const SmokeCheckSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["check", "status", "evidence", "suggestedCommand"],
+  properties: {
+    check: { type: "string" },
+    status: { enum: ["pass", "warn", "fail"] },
+    evidence: { type: "array", items: { type: "string" } },
+    suggestedCommand: { type: "string" },
+  },
+};
 
-const SmokeCheck = z.object({
-  check: z.string(),
-  status: z.enum(["pass", "warn", "fail"]),
-  evidence: z.array(z.string()),
-  suggestedCommand: z.string(),
-}).strict();
+const ReleaseVerdictSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["ready", "blockers", "summary"],
+  properties: {
+    ready: { type: "boolean" },
+    blockers: { type: "array", items: { type: "string" } },
+    summary: { type: "string" },
+  },
+};
 
-const ReleaseVerdict = z.object({
-  ready: z.boolean(),
-  blockers: z.array(z.string()),
-  summary: z.string(),
-}).strict();
-
-export default async function workflow({ agent, parallel, phase, log }: WorkflowContext) {
+export default async function workflow(ctx: any) {
+  const { agent, parallel, phase, log } = ctx;
   const checks = [
     "package metadata and install command",
     "README first-run experience",
@@ -26,7 +34,7 @@ export default async function workflow({ agent, parallel, phase, log }: Workflow
     const result = await agent(
       `Run a read-only release-readiness review for: ${check}.\n\nInspect this repository and return pass/warn/fail, concrete evidence, and the exact command a maintainer should run next.`,
       {
-        schema: SmokeCheck,
+        schema: SmokeCheckSchema,
         cwd: process.cwd(),
         sandbox: "read-only",
         nodeKey: `release:${check}`,
@@ -40,7 +48,7 @@ export default async function workflow({ agent, parallel, phase, log }: Workflow
   const verdict = await phase("release verdict", async () => agent(
     `Decide whether this release is ready based on these smoke checks.\n\n${JSON.stringify(results.filter(Boolean), null, 2)}`,
     {
-      schema: ReleaseVerdict,
+      schema: ReleaseVerdictSchema,
       kind: "judge",
       pure: true,
       nodeKey: "release:verdict",

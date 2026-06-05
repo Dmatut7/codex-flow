@@ -1,20 +1,28 @@
-import { z } from "zod";
-import type { WorkflowContext } from "../engine/index.ts";
+const FindingSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["area", "likelyCause", "evidenceToCheck", "confidence"],
+  properties: {
+    area: { type: "string" },
+    likelyCause: { type: "string" },
+    evidenceToCheck: { type: "array", items: { type: "string" } },
+    confidence: { type: "number" },
+  },
+};
 
-const Finding = z.object({
-  area: z.string(),
-  likelyCause: z.string(),
-  evidenceToCheck: z.array(z.string()),
-  confidence: z.number(),
-}).strict();
+const SummarySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["topCause", "nextAction", "summary"],
+  properties: {
+    topCause: { type: "string" },
+    nextAction: { type: "string" },
+    summary: { type: "string" },
+  },
+};
 
-const Summary = z.object({
-  topCause: z.string(),
-  nextAction: z.string(),
-  summary: z.string(),
-}).strict();
-
-export default async function workflow({ agent, parallel, phase, log }: WorkflowContext) {
+export default async function workflow(ctx: any) {
+  const { agent, parallel, phase, log } = ctx;
   const bug = "Users are intermittently logged out after refreshing the page.";
   const areas = [
     "session persistence and cookie configuration",
@@ -27,7 +35,7 @@ export default async function workflow({ agent, parallel, phase, log }: Workflow
     const result = await agent(
       `Investigate this bug area in the current repository.\n\nBUG: ${bug}\nAREA: ${area}\n\nReturn the likely cause, concrete evidence to check, and confidence from 0 to 1.`,
       {
-        schema: Finding,
+        schema: FindingSchema,
         cwd: process.cwd(),
         sandbox: "read-only",
         nodeKey: `bug:${area}`,
@@ -36,14 +44,14 @@ export default async function workflow({ agent, parallel, phase, log }: Workflow
     return result.output;
   })));
 
-  const completed = findings.filter(Boolean) as Array<z.infer<typeof Finding>>;
-  const solid = completed.filter((finding) => finding.confidence >= 0.5);
+  const completed = findings.filter(Boolean);
+  const solid = completed.filter((finding: any) => finding.confidence >= 0.5);
   log("solid findings", solid);
 
   const summary = await phase("synthesize", async () => agent(
     `Synthesize these parallel bug findings into one maintainer action plan.\n\n${JSON.stringify(solid, null, 2)}`,
     {
-      schema: Summary,
+      schema: SummarySchema,
       kind: "judge",
       pure: true,
       nodeKey: "bug:synthesis",

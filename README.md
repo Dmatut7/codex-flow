@@ -59,7 +59,7 @@ It uses **your Codex / ChatGPT membership login** — no OpenAI API key needed.
 
 If the run is interrupted (Ctrl-C, crash, budget), running it again **resumes**: finished work replays instantly, only unfinished nodes call Codex again.
 
-See the [maintainer workflow gallery](examples/README.md) for runnable bug investigation, PR review, and release smoke workflows. See [docs/POSITIONING.md](docs/POSITIONING.md) for what `codex-flow` is / is not, [ROADMAP.md](ROADMAP.md) for public next steps, and [docs/LAUNCH_PLAYBOOK.md](docs/LAUNCH_PLAYBOOK.md) for sharing / launch copy.
+See the [maintainer workflow gallery](examples/README.md) for import-free runnable bug investigation, PR review, issue triage, and release smoke workflows. See [docs/POSITIONING.md](docs/POSITIONING.md) for what `codex-flow` is / is not, [ROADMAP.md](ROADMAP.md) for public next steps, and [docs/LAUNCH_PLAYBOOK.md](docs/LAUNCH_PLAYBOOK.md) for sharing / launch copy.
 
 ## Why this is more than "an engine"
 

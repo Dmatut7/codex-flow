@@ -1,20 +1,28 @@
-import { z } from "zod";
-import type { WorkflowContext } from "../engine/index.ts";
+const ReviewPassSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pass", "risks", "strengths", "recommendation"],
+  properties: {
+    pass: { type: "string" },
+    risks: { type: "array", items: { type: "string" } },
+    strengths: { type: "array", items: { type: "string" } },
+    recommendation: { enum: ["approve", "changes_requested", "needs_more_info"] },
+  },
+};
 
-const ReviewPass = z.object({
-  pass: z.string(),
-  risks: z.array(z.string()),
-  strengths: z.array(z.string()),
-  recommendation: z.enum(["approve", "changes_requested", "needs_more_info"]),
-}).strict();
+const VerdictSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["recommendation", "mustFix", "summary"],
+  properties: {
+    recommendation: { enum: ["approve", "changes_requested", "needs_more_info"] },
+    mustFix: { type: "array", items: { type: "string" } },
+    summary: { type: "string" },
+  },
+};
 
-const Verdict = z.object({
-  recommendation: z.enum(["approve", "changes_requested", "needs_more_info"]),
-  mustFix: z.array(z.string()),
-  summary: z.string(),
-}).strict();
-
-export default async function workflow({ agent, parallel, phase, log }: WorkflowContext) {
+export default async function workflow(ctx: any) {
+  const { agent, parallel, phase, log } = ctx;
   const passes = [
     "correctness and edge cases",
     "regression risk and backwards compatibility",
@@ -26,7 +34,7 @@ export default async function workflow({ agent, parallel, phase, log }: Workflow
     const result = await agent(
       `Review the current repository changes from this angle: ${pass}.\n\nInspect the working tree and git diff. Return concrete risks, strengths, and a recommendation.`,
       {
-        schema: ReviewPass,
+        schema: ReviewPassSchema,
         cwd: process.cwd(),
         sandbox: "read-only",
         nodeKey: `pr-review:${pass}`,
@@ -41,7 +49,7 @@ export default async function workflow({ agent, parallel, phase, log }: Workflow
   const verdict = await phase("merge review", async () => agent(
     `Merge these independent PR review passes into one final maintainer verdict.\n\n${JSON.stringify(completed, null, 2)}`,
     {
-      schema: Verdict,
+      schema: VerdictSchema,
       kind: "judge",
       pure: true,
       nodeKey: "pr-review:verdict",
