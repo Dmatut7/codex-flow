@@ -603,6 +603,54 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("does not accept success after timeout when an adapter ignores the signal", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { delayMs: 30, responses: [{ ok: true }] } },
+    });
+
+    const result = await engine.run(async ({ agent }) => agent("late success", {
+      backend: "fake",
+      timeoutMs: 1,
+    }));
+
+    assert.equal(result.status, "error");
+    assert.equal(result.output, null);
+    assert.equal(engine.adapters.fake.calls.length, 1);
+    const records = (await readJsonl(journalPath)).filter((line) => line.type === "node");
+    assert.deepEqual(records.map((record) => record.status), ["timeout"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("does not start an agent when the caller signal is already aborted", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const abortController = new AbortController();
+    abortController.abort(new Error("caller aborted"));
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [{ ok: true }] } },
+    });
+
+    const result = await engine.run(async ({ agent }) => agent("pre-aborted", {
+      backend: "fake",
+      signal: abortController.signal,
+    }));
+
+    assert.equal(result.status, "error");
+    assert.equal(result.output, null);
+    assert.equal(engine.adapters.fake.calls.length, 0);
+    const records = (await readJsonl(journalPath)).filter((line) => line.type === "node");
+    assert.deepEqual(records.map((record) => record.status), ["timeout"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("uses the real cwd for workspace-write nodes", async () => {
     const dir = await tempDir();
     const realCwd = path.join(dir, "repo");

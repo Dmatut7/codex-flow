@@ -103,7 +103,8 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
       let timer: ReturnType<typeof setTimeout> | undefined;
       const abortFromOuter = () => abortController.abort(opts.signal?.reason);
       opts.signal?.addEventListener("abort", abortFromOuter, { once: true });
-      if (timeoutMs) timer = setTimeout(() => abortController.abort(new TimeoutError()), timeoutMs);
+      if (opts.signal?.aborted) abortFromOuter();
+      if (timeoutMs && !abortController.signal.aborted) timer = setTimeout(() => abortController.abort(new TimeoutError()), timeoutMs);
       try {
         const adapterResult = await runAdapterWithTransientRetry(runtime, adapter, currentPrompt, normalized, abortController.signal, key, ensureWritableRegistered);
         lastUsage = adapterResult.usage;
@@ -234,10 +235,10 @@ async function runAdapterWithTransientRetry(
     try {
       if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new TimeoutError("agent call aborted");
       ensureWritableRegistered();
-      return await runtime.withIsolatedGlobals(`${cacheKey}:${retry}`, () => adapter.run(prompt, normalized, {
+      return await raceAbort(runtime.withIsolatedGlobals(`${cacheKey}:${retry}`, () => adapter.run(prompt, normalized, {
         signal,
         log: (msg, data) => runtime.log(msg, data),
-      }));
+      })), signal);
     } catch (error) {
       if (signal.aborted || error instanceof TimeoutError || !isTransient(error) || retry >= maxRetries) throw error;
     } finally {
@@ -289,6 +290,26 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
     }
     signal.addEventListener("abort", onAbort, { once: true });
   });
+}
+
+async function raceAbort<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) throw abortError(signal);
+  let onAbort: (() => void) | undefined;
+  const abort = new Promise<never>((_, reject) => {
+    onAbort = () => reject(abortError(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    const result = await Promise.race([work, abort]);
+    if (signal.aborted) throw abortError(signal);
+    return result;
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
+}
+
+function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new TimeoutError("agent call aborted");
 }
 
 export async function ensureWritableIsolation(runtime: EngineRuntime, opts: AgentOpts, key: string): Promise<string | undefined> {
