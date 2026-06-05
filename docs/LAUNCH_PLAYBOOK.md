@@ -78,7 +78,7 @@ use a dynamic workflow to investigate this bug across the repo in parallel
 ## Best next signals before applying for Codex OSS credits
 
 - npm package published as `codex-flow`.
-- 30-second GIF/video embedded in README.
+- Animated README demo is embedded; a real screen-recorded video would be the next upgrade.
 - 3-5 stars or at least one outside user issue/comment.
 - A maintainer workflow gallery with PR review, bug triage, and release smoke examples.
 - GitHub Actions CI after enabling `workflow` scope on the GitHub token.

@@ -17,7 +17,7 @@ If this is useful, star the repo so more Codex users can find it: [Dmatut7/codex
 
 ## What it feels like
 
-![codex-flow demo](assets/codex-flow-demo.svg)
+![codex-flow animated demo](assets/codex-flow-demo.gif)
 
 The important difference is not another config file. It is the loop:
 
@@ -25,6 +25,8 @@ The important difference is not another config file. It is the loop:
 2. Codex generates a temporary workflow,
 3. `codex-flow` runs the branches,
 4. the journal makes interruption and rerun cheap.
+
+Prefer a static version? See the [storyboard SVG](assets/codex-flow-demo.svg).
 
 ## 30-second start
 
