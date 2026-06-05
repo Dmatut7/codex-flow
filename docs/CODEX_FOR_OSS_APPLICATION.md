@@ -5,27 +5,42 @@ Official form: https://openai.com/form/codex-for-oss/
 Current repo: https://github.com/Dmatut7/codex-flow
 Maintainer role: primary maintainer
 
+## Official fit
+
+OpenAI says the program is for maintainers of active public OSS projects with meaningful usage, ecosystem importance, or evidence of real maintenance work. Selected maintainers may receive 6 months of ChatGPT Pro, API credits for core OSS work, and possible Codex Security access.
+
+`codex-flow` should position itself as a Codex maintainer-workflow project: it helps maintainers triage issues, review PRs, investigate bugs, and run release smoke checks in parallel with resumable journals.
+
 ## Current readiness
 
-Ready now:
-
 - Public GitHub repository.
+- Public release: https://github.com/Dmatut7/codex-flow/releases/tag/v0.2.0
 - MIT license.
 - Clear README with install and usage path.
-- Local verification: typecheck, tests, pack dry-run.
-- Real Codex smoke command for `codex-sdk` and `codex-exec`.
-- Project directly targets maintainer automation: bug investigation, PR review, issue triage, release smoke workflows.
+- CLI install path: `npm install -g github:Dmatut7/codex-flow` until npm OTP publish is completed.
+- Codex skill install path: `codex-flow install-codex`, then users can ask Codex to use a dynamic workflow in any project.
+- Local verification: `npm run typecheck`, `npm test`, `npm publish --dry-run --access public`.
+- Published package readiness: root JS import works, root TypeScript declarations work, `prepublishOnly` gates publish with typecheck + tests.
+- Real Codex smoke verified on 2026-06-05:
+  - `codex-flow smoke --backend codex-sdk` → `SMOKE_OK`, `pong:true`, non-zero usage.
+  - `codex-flow smoke --backend codex-exec` → `SMOKE_OK`, `pong:true`, non-zero usage.
+  - `codex-flow smoke --backend openai-responses` with no API key → `SMOKE_SKIPPED`, exit 0.
+- Maintainer workflow examples included: bug investigation, PR review, issue triage, release smoke.
+- Project directly targets maintainer automation, not generic task management.
 
-Need stronger signals before applying if possible:
+Remaining blockers / weaker signals:
 
-- Publish npm package `codex-flow`.
-- Add a real screen-recorded demo video and collect early outside-user feedback.
-- Get early users/stars/issues from real usage.
-- Tag a GitHub release.
-- Add GitHub Actions CI after refreshing `gh` with the `workflow` scope.
-- Add examples for PR review, bug triage, and release checks.
+- npm package publish needs the maintainer's npm publish-time OTP.
+- GitHub Actions CI needs a refreshed GitHub token with `workflow` scope.
+- Adoption signals are still early: collect stars, issues, outside-user feedback, and usage examples after launch.
 
 ## Form fields
+
+Email:
+
+```text
+Use the email associated with the ChatGPT account.
+```
 
 GitHub username:
 
