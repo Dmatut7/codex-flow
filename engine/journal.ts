@@ -39,7 +39,7 @@ export class Journal {
   appendNode(record: JournalNodeRecord): void {
     this.append(record);
     this.lastByKey.set(record.key, record);
-    if (record.status === "terminal") this.replayMap.set(record.key, record);
+    if (isReplayable(record)) this.replayMap.set(record.key, record);
     else this.replayMap.delete(record.key);
     this.lastTotals = { ...record.runningTotals };
   }
@@ -72,7 +72,11 @@ export class Journal {
       }
     }
     for (const [key, record] of this.lastByKey.entries()) {
-      if (record.status === "terminal") this.replayMap.set(key, record);
+      if (isReplayable(record)) this.replayMap.set(key, record);
     }
   }
+}
+
+function isReplayable(record: JournalNodeRecord): boolean {
+  return record.status === "terminal" || record.status === "failed" || record.status === "timeout";
 }

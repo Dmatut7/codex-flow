@@ -548,6 +548,60 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("replays failed and timeout terminal-null records without calling the backend again", async () => {
+    const dir = await tempDir();
+    const failedJournalPath = path.join(dir, "failed.jsonl");
+    const failed = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: failedJournalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("auth denied"); } } },
+    });
+
+    const failedResult = await failed.run(async ({ agent }) => agent("stable failed node", { backend: "fake" }));
+
+    assert.equal(failedResult.status, "error");
+    assert.equal(failed.adapters.fake.calls.length, 1);
+
+    const failedReplay = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: failedJournalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("should not be called"); } } },
+    });
+    const replayedFailed = await failedReplay.run(async ({ agent }) => agent("stable failed node", { backend: "fake" }));
+
+    assert.equal(replayedFailed.replayed, true);
+    assert.equal(replayedFailed.status, "error");
+    assert.equal(failedReplay.adapters.fake.calls.length, 0);
+
+    const timeoutJournalPath = path.join(dir, "timeout-replay.jsonl");
+    const timeout = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: timeoutJournalPath,
+      adapters: { fake: { resolver: async () => { throw new TimeoutError(); } } },
+    });
+
+    const timeoutResult = await timeout.run(async ({ agent }) => agent("stable timeout node", { backend: "fake" }));
+
+    assert.equal(timeoutResult.status, "error");
+    assert.equal(timeout.adapters.fake.calls.length, 1);
+
+    const timeoutReplay = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: timeoutJournalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("should not be called"); } } },
+    });
+    const replayedTimeout = await timeoutReplay.run(async ({ agent }) => agent("stable timeout node", { backend: "fake" }));
+
+    assert.equal(replayedTimeout.replayed, true);
+    assert.equal(replayedTimeout.status, "error");
+    assert.equal(timeoutReplay.adapters.fake.calls.length, 0);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("replays a completed node even when the default backend changes", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");
