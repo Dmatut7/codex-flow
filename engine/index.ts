@@ -9,7 +9,7 @@ import { Semaphore, defaultConcurrency } from "./semaphore.ts";
 import { WorkflowBudget } from "./budget.ts";
 import { Determinism } from "./determinism.ts";
 import { sha256 } from "./canonical.ts";
-import { runAgent, ensureWritableIsolation } from "./agent.ts";
+import { runAgent, ensureWritableIsolation, normalizeAdditionalDirectories } from "./agent.ts";
 import { makeTopologies } from "./topologies.ts";
 import { aggregateKeys, makeScope, type EngineRuntime, type Scope } from "./runtime.ts";
 import { createAdapters, resolveBackend as resolveBackendFromRegistry } from "../adapters/registry.ts";
@@ -93,6 +93,7 @@ class WorkflowEngine implements Engine, EngineRuntime {
 
   async normalizeOpts(opts: AgentOpts, backend: string, key: string, cacheCwd: string | undefined, schema: NormalizedSchema | undefined): Promise<NormalizedAgentOpts> {
     const cwd = await ensureWritableIsolation(this, opts, key);
+    const additionalDirectories = normalizeAdditionalDirectories(opts);
     return {
       ...opts,
       backend,
@@ -100,6 +101,7 @@ class WorkflowEngine implements Engine, EngineRuntime {
       model: opts.model ?? this.config.defaultModel,
       cwd,
       cacheCwd,
+      additionalDirectories,
       schema,
     };
   }

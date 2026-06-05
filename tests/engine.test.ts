@@ -745,6 +745,49 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("rejects concurrent writable agents that share an additional directory", async () => {
+    const dir = await tempDir();
+    const repoA = path.join(dir, "repo-a");
+    const repoB = path.join(dir, "repo-b");
+    const shared = path.join(dir, "shared");
+    await mkdir(repoA, { recursive: true });
+    await mkdir(repoB, { recursive: true });
+    await mkdir(shared, { recursive: true });
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 2,
+      journalPath: path.join(dir, "journal.jsonl"),
+      adapters: {
+        fake: {
+          resolver: async () => {
+            await delay(80);
+            return { ok: true };
+          },
+        },
+      },
+    });
+
+    await assert.rejects(
+      engine.run(async ({ parallel, agent }) => parallel([
+        async () => agent("a", { backend: "fake", cwd: repoA, sandbox: "workspace-write", additionalDirectories: [shared] }),
+        async () => agent("b", { backend: "fake", cwd: repoB, sandbox: "workspace-write", additionalDirectories: [shared] }),
+      ])),
+      ConcurrentWritableCwdError,
+    );
+    await delay(100);
+
+    const after = await engine.run(async ({ agent }) => agent("after shared dir collision", {
+      backend: "fake",
+      cwd: repoA,
+      sandbox: "workspace-write",
+      additionalDirectories: [shared],
+    }));
+    assert.deepEqual(after.output, { ok: true });
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("allows concurrent writable agents with different cwd and requires cwd for writable sandboxes", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

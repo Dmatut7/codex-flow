@@ -280,17 +280,24 @@ export async function ensureWritableIsolation(runtime: EngineRuntime, opts: Agen
   const sandbox = opts.sandbox ?? "read-only";
   if (sandbox === "read-only") return path.resolve(opts.cwd ?? process.cwd());
   if (!opts.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
-  return realWritableCwd(opts.cwd);
+  return realWritableRoot(opts.cwd, "cwd");
+}
+
+export function normalizeAdditionalDirectories(opts: AgentOpts): string[] | undefined {
+  if (!opts.additionalDirectories?.length) return undefined;
+  const sandbox = opts.sandbox ?? "read-only";
+  if (sandbox === "read-only") return opts.additionalDirectories;
+  return opts.additionalDirectories.map((dir) => realWritableRoot(dir, "additionalDirectories"));
 }
 
 function registerWritableCwd(runtime: EngineRuntime, normalized: NormalizedAgentOpts): () => void {
   if (normalized.sandbox === "read-only") return () => {};
-  if (!normalized.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
-  const cwd = realWritableCwd(normalized.cwd);
-  if (runtime.activeWritableCwds.has(cwd)) throw new ConcurrentWritableCwdError(cwd);
-  runtime.activeWritableCwds.add(cwd);
+  const roots = writableRoots(normalized);
+  const active = roots.find((root) => runtime.activeWritableCwds.has(root));
+  if (active) throw new ConcurrentWritableCwdError(active);
+  for (const root of roots) runtime.activeWritableCwds.add(root);
   return () => {
-    runtime.activeWritableCwds.delete(cwd);
+    for (const root of roots) runtime.activeWritableCwds.delete(root);
   };
 }
 
@@ -298,13 +305,22 @@ function cacheCwdFor(opts: AgentOpts): string | undefined {
   const sandbox = opts.sandbox ?? "read-only";
   if (sandbox === "read-only") return path.resolve(opts.cwd ?? process.cwd());
   if (!opts.cwd) return undefined;
-  return realWritableCwd(opts.cwd);
+  return realWritableRoot(opts.cwd, "cwd");
 }
 
-function realWritableCwd(cwd: string): string {
+function writableRoots(normalized: NormalizedAgentOpts): string[] {
+  if (!normalized.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
+  const roots = [
+    realWritableRoot(normalized.cwd, "cwd"),
+    ...(normalized.additionalDirectories ?? []).map((dir) => realWritableRoot(dir, "additionalDirectories")),
+  ];
+  return [...new Set(roots)];
+}
+
+function realWritableRoot(root: string, label: string): string {
   try {
-    return realpathSync.native(cwd);
+    return realpathSync.native(root);
   } catch {
-    throw new Error(`workspace-write/danger-full-access cwd not found: ${path.resolve(cwd)}`);
+    throw new Error(`workspace-write/danger-full-access ${label} not found: ${path.resolve(root)}`);
   }
 }
