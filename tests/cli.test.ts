@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -202,6 +202,31 @@ describe("codex-flow cli", () => {
     assert.equal(businessSkill.status, "warn");
     assert.match(businessSkill.detail, /business-defect-audit/);
     assert.match(businessSkill.next, /codex-flow install-codex/);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("doctor and smoke report unavailable temp dirs without crashing", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-temp-"));
+    const badTmp = path.join(dir, "tmp");
+    await mkdir(badTmp);
+    await chmod(badTmp, 0o500);
+    const env = { ...process.env, CODEX_HOME: dir, TMPDIR: badTmp, TMP: badTmp, TEMP: badTmp };
+
+    try {
+      const doctor = spawnSync("node", [binPath, "doctor", "--json"], { encoding: "utf8", env });
+      assert.equal(doctor.status, 0, doctor.stderr);
+      const body = JSON.parse(doctor.stdout);
+      const fake = body.checks.find((check: any) => check.name === "fake backend");
+      assert.equal(fake.status, "warn");
+      assert.match(fake.detail, /temporary directory unavailable/i);
+
+      const smoke = spawnSync("node", [binPath, "smoke", "--backend", "codex-sdk"], { encoding: "utf8", env });
+      assert.equal(smoke.status, 0, smoke.stderr);
+      assert.match(smoke.stdout, /SMOKE_SKIPPED/);
+      assert.match(smoke.stdout, /temporary directory unavailable/i);
+    } finally {
+      await chmod(badTmp, 0o700);
+    }
     await rm(dir, { recursive: true, force: true });
   });
 

@@ -101,7 +101,17 @@ function checkBusinessAuditSkill(): Check {
 }
 
 async function checkFakeBackend(): Promise<Check> {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "codex-flow-doctor-"));
+  let dir: string;
+  try {
+    dir = mkdtempSync(path.join(os.tmpdir(), "codex-flow-doctor-"));
+  } catch (error) {
+    return {
+      name: "fake backend",
+      status: "warn",
+      detail: `temporary directory unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      next: "Fix TMPDIR/TMP/TEMP permissions, then rerun `codex-flow doctor`.",
+    };
+  }
   try {
     const engine = createEngine({
       defaultBackend: "fake",

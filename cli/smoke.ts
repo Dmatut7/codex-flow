@@ -59,7 +59,18 @@ export async function smoke(argv: string[]): Promise<void> {
     return;
   }
 
-  const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-smoke-"));
+  let dir: string;
+  try {
+    dir = await mkdtemp(path.join(tmpdir(), "codex-flow-smoke-"));
+  } catch (error) {
+    console.log(JSON.stringify({
+      status: "SMOKE_SKIPPED",
+      reason: `temporary directory unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      backend,
+      hint: "Fix TMPDIR/TMP/TEMP permissions, then rerun codex-flow smoke.",
+    }, null, 2));
+    return;
+  }
   const journalPath = path.join(dir, `${backend}.jsonl`);
   const PongSchema = z.object({ pong: z.boolean() }).strict();
   const engine = createEngine({
