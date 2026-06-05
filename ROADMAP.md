@@ -7,7 +7,7 @@
 - Publish `codex-flow` to npm after npm account login is available.
 - Add a real screen-recorded demo video showing “say dynamic workflow → Codex generates workflow → parallel agents run → journal replay”.
 - Add GitHub Actions CI after refreshing GitHub CLI auth with the `workflow` scope.
-- Add ready-made workflow examples for PR review, bug triage, issue triage, and release smoke checks.
+- Expand the workflow gallery with issue triage and real screen-recorded walkthroughs.
 
 ## Medium term
 

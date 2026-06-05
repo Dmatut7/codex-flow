@@ -80,5 +80,5 @@ use a dynamic workflow to investigate this bug across the repo in parallel
 - npm package published as `codex-flow`.
 - Animated README demo is embedded; a real screen-recorded video would be the next upgrade.
 - 3-5 stars or at least one outside user issue/comment.
-- A maintainer workflow gallery with PR review, bug triage, and release smoke examples.
+- Maintainer workflow gallery exists; add issue triage and real user feedback next.
 - GitHub Actions CI after enabling `workflow` scope on the GitHub token.

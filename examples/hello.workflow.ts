@@ -1,7 +1,7 @@
 // 最简单的真实工作流示例:问 Codex 一个问题,拿到结构化(JSON)结果。
 // 完全用你的 Codex 会员运行,不需要任何 API key。
 //
-// 跑它:  npx tsx engine/cli.ts run examples/hello.workflow.ts
+// 跑它:  codex-flow run examples/hello.workflow.ts
 //
 import { z } from "zod";
 import type { WorkflowContext } from "../engine/index.ts";

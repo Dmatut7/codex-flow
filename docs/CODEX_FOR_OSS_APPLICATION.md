@@ -19,7 +19,7 @@ Ready now:
 Need stronger signals before applying if possible:
 
 - Publish npm package `codex-flow`.
-- Add a real screen-recorded demo video/GIF and 2-3 more workflow-gallery examples.
+- Add a real screen-recorded demo video and collect early outside-user feedback.
 - Get early users/stars/issues from real usage.
 - Tag a GitHub release.
 - Add GitHub Actions CI after refreshing `gh` with the `workflow` scope.
