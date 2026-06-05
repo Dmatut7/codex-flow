@@ -1083,6 +1083,29 @@ console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, c
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("applies budget skip atomically across parallel agents", async () => {
+    const dir = await tempDir();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 3,
+      journalPath: path.join(dir, "journal.jsonl"),
+      budget: { maxNodes: 1, onExceeded: "skip" },
+      adapters: { fake: { delayMs: 20 } },
+    });
+
+    const results = await engine.run(async ({ parallel, agent }) => parallel([
+      async () => agent("a", { backend: "fake" }),
+      async () => agent("b", { backend: "fake" }),
+      async () => agent("c", { backend: "fake" }),
+    ]));
+
+    assert.equal(engine.adapters.fake.calls.length, 1);
+    assert.equal(results.filter((result) => result?.status === "ok").length, 1);
+    assert.equal(results.filter((result) => result === null).length, 2);
+    await rm(dir, { recursive: true, force: true });
+  });
+
 
   it("produces the same cache key sequence for the same script and seed", async () => {
     const runOnce = async (): Promise<string[]> => {

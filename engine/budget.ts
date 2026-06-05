@@ -46,6 +46,11 @@ export class WorkflowBudget implements BudgetController {
     this.totalUsage.nodes += 1;
   }
 
+  cancelReservation(estimate = 0): void {
+    this.reservedTokens = Math.max(0, this.reservedTokens - estimate);
+    this.totalUsage.nodes = Math.max(0, this.totalUsage.nodes - 1);
+  }
+
   reconcile(actual: Usage, estimate = 0): void {
     this.reservedTokens = Math.max(0, this.reservedTokens - estimate);
     this.totalUsage.input_tokens += actual.input_tokens ?? 0;

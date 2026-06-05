@@ -68,9 +68,17 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
   if (action === "downgrade") backend = "openai-responses";
 
   const adapterThreadId = threadIdForAdapter(opts.threadId, backend, runtime.adapters);
-  const normalized = await runtime.normalizeOpts({ ...opts, threadId: adapterThreadId, schema: undefined }, backend, key, cacheCwd, schema);
   const adapter = runtime.adapters[backend];
   if (!adapter) throw new Error(`Unknown backend: ${backend}`);
+  const firstEstimate = runtime.config.estimatedTokensPerCall;
+  runtime.budget.reserve(firstEstimate);
+  let normalized: NormalizedAgentOpts;
+  try {
+    normalized = await runtime.normalizeOpts({ ...opts, threadId: adapterThreadId, schema: undefined }, backend, key, cacheCwd, schema);
+  } catch (error) {
+    runtime.budget.cancelReservation(firstEstimate);
+    throw error;
+  }
 
   const maxRepair = opts.retries ?? 2;
   let currentPrompt = prompt;
@@ -88,8 +96,8 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
 
   try {
     for (let attempt = 0; attempt <= maxRepair; attempt++) {
-      const estimate = runtime.config.estimatedTokensPerCall;
-      runtime.budget.reserve(estimate);
+      const estimate = attempt === 0 ? firstEstimate : runtime.config.estimatedTokensPerCall;
+      if (attempt > 0) runtime.budget.reserve(estimate);
       const abortController = new AbortController();
       const timeoutMs = opts.timeoutMs ?? runtime.config.timeoutMs;
       let timer: ReturnType<typeof setTimeout> | undefined;
