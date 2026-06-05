@@ -41,10 +41,10 @@ function usageTotal(usage: AgentResult["usage"]): number {
   return usage.input_tokens + usage.cached_input_tokens + usage.output_tokens + (usage.reasoning_output_tokens ?? 0);
 }
 
-function unavailableHint(backend: RealBackend): string {
+export function unavailableHint(backend: RealBackend): string {
   if (backend === "codex-exec") return "Install/login to codex CLI, or provide CODEX_API_KEY.";
   if (backend === "openai-responses") return "Set OPENAI_API_KEY, or configure adapters.openaiResponses with credentials.";
-  return "Login to codex CLI or provide CODEX_API_KEY for @openai/codex-sdk.";
+  return "Login to Codex CLI/Codex App with your Codex membership; no OpenAI API key is needed for @openai/codex-sdk.";
 }
 
 function unavailableReason(message: string): boolean {

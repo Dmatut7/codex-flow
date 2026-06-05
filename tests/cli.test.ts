@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { installCodex } from "../cli/install-codex.ts";
+import { unavailableHint } from "../cli/smoke.ts";
 
 const binPath = fileURLToPath(new URL("../bin/codex-flow.mjs", import.meta.url));
 const rootExportUrl = pathToFileURL(fileURLToPath(new URL("../index.mjs", import.meta.url))).href;
@@ -68,6 +69,12 @@ describe("codex-flow cli", () => {
   it("typecheck covers published CLI TypeScript sources", async () => {
     const tsconfig = JSON.parse(await readFile(path.join(repoRoot, "tsconfig.json"), "utf8")) as { include?: string[] };
     assert.ok(tsconfig.include?.includes("cli/**/*.ts"), "tsconfig include should cover cli/**/*.ts");
+  });
+
+  it("smoke tells codex-sdk users to use membership login instead of an API key", () => {
+    const hint = unavailableHint("codex-sdk");
+    assert.match(hint, /Codex membership/i);
+    assert.doesNotMatch(hint, /CODEX_API_KEY|OPENAI_API_KEY/);
   });
 
   it("install-codex copies the skill into the target dir", async () => {
