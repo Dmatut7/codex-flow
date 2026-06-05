@@ -713,6 +713,33 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("rejects journal replay when a malformed line appears before later records", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [{ ok: true }] } },
+    });
+    await engine.run(async ({ agent }) => agent("stable", { backend: "fake" }));
+    const lines = (await readFile(journalPath, "utf8")).trim().split("\n");
+    await writeFile(journalPath, [lines[0], "{ broken", ...lines.slice(1)].join("\n") + "\n", "utf8");
+
+    const replayEngine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [] } },
+    });
+
+    await assert.rejects(
+      replayEngine.run(async ({ agent }) => agent("stable", { backend: "fake" })),
+      /journal.*corrupt|invalid JSON/i,
+    );
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("replays failed and timeout terminal-null records without calling the backend again", async () => {
     const dir = await tempDir();
     const failedJournalPath = path.join(dir, "failed.jsonl");

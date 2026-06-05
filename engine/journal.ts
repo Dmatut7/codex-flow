@@ -57,13 +57,15 @@ export class Journal {
     this.lastByKey.clear();
     const text = readFileSync(this.filePath, "utf8");
     const lines = text.split("\n");
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       if (!line.trim()) continue;
       let parsed: any;
       try {
         parsed = JSON.parse(line);
       } catch {
-        continue;
+        if (lines.slice(i + 1).some((later) => later.trim())) throw new Error(`journal corrupt: invalid JSON at line ${i + 1}`);
+        break;
       }
       if (parsed.type === "manifest") this.manifest = parsed;
       if (parsed.type === "node") {
