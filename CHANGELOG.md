@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Added the `parallel-fix` Codex skill and example workflow for proposing independent fixes concurrently, then integrating and verifying serially.
+- Hardened replay/cache correctness: implicit cwd is now part of cache identity, nested phases inside parallel no longer alias, and failed topology branches keep completed child dependencies for downstream invalidation.
+- Hardened concurrency and writable isolation: FIFO semaphore handoff no longer over-admits, writable cwd locks stay held across transient retries, additional writable directories are locked, and writable configuration errors propagate through topologies.
+- Hardened determinism and abort handling: adapter-side global randomness no longer shifts workflow `ctx.random`, and adapters cannot return success after timeout/abort.
+- Hardened budget handling: parallel agents reserve budget before async backend work, so replayed/skipped nodes do not bypass the guard.
+- Hardened strict schema handling: object-like combinator branches are enforced, root `allOf`/`oneOf` object combinators no longer make valid payloads impossible, and boolean `false` schemas are rejected instead of disabling validation.
+- Hardened transient stream handling: prefixed Codex `Reconnecting...` advisories are ignored as reconnect notices instead of being promoted to fatal stream errors.
+
 ## 0.2.3 — 2026-06-05
 
 - Moved the install command into the README first screen so GitHub visitors see it immediately.
