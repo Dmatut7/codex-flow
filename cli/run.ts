@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { runWorkflow } from "../engine/index.ts";
 import type { EngineConfig } from "../engine/types.ts";
+import { startProgress } from "./progress.ts";
 
 function valueAfter(argv: string[], name: string): string | undefined {
   const i = argv.indexOf(name);
@@ -73,11 +74,14 @@ export async function run(argv: string[]): Promise<void> {
     journalPath,
   };
 
+  const stopProgress = startProgress(journalPath);
   try {
     const result = await runWorkflow(abs, config);
+    stopProgress();
     console.log(JSON.stringify(result, null, 2));
     console.error(`\n(journal: ${journalPath} — re-run the same command to resume)`);
   } catch (error) {
+    stopProgress();
     console.error(`codex-flow run failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
