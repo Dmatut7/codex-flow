@@ -961,6 +961,35 @@ console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, c
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("replays successful null outputs as ok results", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const workflow = async ({ agent }: any) => agent("return null", { backend: "fake" });
+
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: ["null"] } },
+    });
+    const firstResult = await first.run(workflow);
+    assert.equal(firstResult.status, "ok");
+    assert.equal(firstResult.output, null);
+
+    const second = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("should replay"); } } },
+    });
+    const secondResult = await second.run(workflow);
+    assert.equal(secondResult.replayed, true);
+    assert.equal(secondResult.status, "ok");
+    assert.equal(secondResult.output, null);
+    assert.equal(second.adapters.fake.calls.length, 0);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("replays a completed node even when the default backend changes", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

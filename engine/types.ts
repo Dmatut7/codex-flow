@@ -121,6 +121,7 @@ export interface JournalNodeRecord {
   backend: string;
   threadId?: string;
   status: "terminal" | "repair" | "timeout" | "failed";
+  resultStatus?: "ok" | "error";
   attempt?: number;
   result?: unknown;
   raw?: string;

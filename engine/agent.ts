@@ -44,7 +44,8 @@ export async function runAgent<T>(runtime: EngineRuntime, prompt: string, opts: 
 
   const replay = runtime.journal.get(key);
   if (replay) {
-    const result = makeResult<T>(replay.result as T, replay.raw ?? "", replay.usage, replay.backend, true, replay.threadId, replay.status === "terminal" && replay.result !== null ? "ok" : "error");
+    const status = replay.resultStatus ?? (replay.status === "terminal" && replay.result !== null ? "ok" : "error");
+    const result = makeResult<T>(replay.result as T, replay.raw ?? "", replay.usage, replay.backend, true, replay.threadId, status);
     scope.currentPrevKey = key;
     return result;
   }
@@ -179,6 +180,7 @@ function appendTerminal<T>(runtime: EngineRuntime, key: string, backend: string,
     backend,
     threadId: result.threadId,
     status: status === "terminal" ? "terminal" : status,
+    resultStatus: result.status,
     result: result.status === "ok" ? result.output : null,
     raw: result.raw,
     usage: result.usage,
