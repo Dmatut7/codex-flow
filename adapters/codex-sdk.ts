@@ -1,5 +1,6 @@
 import type { AgentAdapter, AdapterResult, AdapterRuntime, NormalizedAgentOpts } from "./types.ts";
 import type { EngineConfig, Usage } from "../engine/types.ts";
+import { isReconnectAdvisory } from "./stream-errors.ts";
 
 export class CodexSdkAdapter implements AgentAdapter {
   readonly name = "codex-sdk";
@@ -31,7 +32,7 @@ export class CodexSdkAdapter implements AgentAdapter {
       if (event.type === "turn.failed") throw new Error(event.error?.message ?? "codex turn failed");
       if (event.type === "error") {
         const message = String(event.message ?? event.error?.message ?? "");
-        if (!/^Reconnecting/i.test(message)) throw new Error(message || "codex stream error");
+        if (!isReconnectAdvisory(message)) throw new Error(message || "codex stream error");
       }
     }
     return { finalResponse, usage, threadId: thread.id ?? undefined };

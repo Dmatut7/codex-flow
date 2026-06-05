@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import type { AgentAdapter, AdapterResult, AdapterRuntime, NormalizedAgentOpts } from "./types.ts";
 import type { EngineConfig, Usage } from "../engine/types.ts";
+import { isReconnectAdvisory } from "./stream-errors.ts";
 
 export class CodexExecAdapter implements AgentAdapter {
   readonly name = "codex-exec";
@@ -57,7 +58,7 @@ export class CodexExecAdapter implements AgentAdapter {
             if (event.type === "turn.failed") fatalMessage = event.error?.message ?? "codex exec turn failed";
             if (event.type === "error") {
               const message = String(event.message ?? event.error?.message ?? "");
-              if (!/^Reconnecting/i.test(message)) fatalMessage = message;
+              if (!isReconnectAdvisory(message)) fatalMessage = message;
             }
           }
         });

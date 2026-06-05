@@ -10,6 +10,7 @@ import { Semaphore } from "../engine/semaphore.ts";
 import { normalizeSchema, parseAndValidate } from "../engine/schema.ts";
 import { resolveBackend } from "../adapters/registry.ts";
 import { OpenAIResponsesAdapter } from "../adapters/openai-responses.ts";
+import { isReconnectAdvisory } from "../adapters/stream-errors.ts";
 
 async function tempDir(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "codex-workflow-test-"));
@@ -546,6 +547,14 @@ describe("dynamic workflow engine", () => {
     );
     assert.equal(engine.adapters.fake.calls.length, 0);
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it("treats prefixed Reconnecting stream messages as advisory", () => {
+    assert.equal(isReconnectAdvisory("Reconnecting... 1/5"), true);
+    assert.equal(isReconnectAdvisory("error: Reconnecting... 1/5"), true);
+    assert.equal(isReconnectAdvisory("[warn] Reconnecting... 1/5"), true);
+    assert.equal(isReconnectAdvisory("fatal reconnecting failed"), false);
+    assert.equal(isReconnectAdvisory("error: authentication failed"), false);
   });
 
   it("retries transient adapter errors without consuming schema repair attempts", async () => {
