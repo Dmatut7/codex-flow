@@ -50,7 +50,9 @@
     "CONTRIBUTING.md",
     "CHANGELOG.md",
     "assets",
-    "ROADMAP.md"
+    "ROADMAP.md",
+    "SECURITY.md",
+    ".github"
   ],
   "scripts": {
     "test": "node --import tsx --test tests/*.test.ts",
