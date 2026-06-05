@@ -68,13 +68,7 @@ Completed nodes replay from the journal. Only unfinished or changed nodes call C
 codex-flow try
 ```
 
-For a repeatable offline smoke test, `try` creates a starter workflow in the current project and forces the fake backend:
-
-```bash
-codex-flow try
-```
-
-The fake backend returns schema-shaped output, so this works without Codex login or network.
+`try` creates a starter workflow in the current project and forces the fake backend, so this works without Codex login or network.
 
 ## 6. Membership vs API key
 
