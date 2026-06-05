@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
@@ -582,6 +582,68 @@ describe("dynamic workflow engine", () => {
     assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { isolate: false }), "codex-sdk");
     assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { isolate: true }), "codex-exec");
     assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { backend: "codex-sdk", isolate: true }), "codex-sdk");
+  });
+
+  it("passes codex-exec prompts as data and limits inherited environment", async () => {
+    const dir = await tempDir();
+    const fakeCodex = path.join(dir, "fake-codex.mjs");
+    const argsPath = path.join(dir, "args.json");
+    const envPath = path.join(dir, "env.json");
+    await writeFile(fakeCodex, `#!/usr/bin/env node
+import { writeFileSync } from "node:fs";
+const args = process.argv.slice(2);
+writeFileSync(process.env.CODEX_EXEC_ARGS_PATH, JSON.stringify(args));
+writeFileSync(process.env.CODEX_EXEC_ENV_PATH, JSON.stringify({
+  NPM_TOKEN: process.env.NPM_TOKEN ?? null,
+  CODEX_API_KEY: process.env.CODEX_API_KEY ?? null,
+  PATH: Boolean(process.env.PATH),
+  HOME: Boolean(process.env.HOME)
+}));
+const outputPath = args[args.indexOf("-o") + 1];
+writeFileSync(outputPath, '{"ok":true}');
+console.log(JSON.stringify({ type: "thread.started", thread_id: "fake-thread" }));
+console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, cached_input_tokens: 0, output_tokens: 1, reasoning_output_tokens: 0 } }));
+`, "utf8");
+    await chmod(fakeCodex, 0o755);
+    const previousNpmToken = process.env.NPM_TOKEN;
+    process.env.NPM_TOKEN = "leaked-token";
+    try {
+      const engine = createEngine({
+        defaultBackend: "codex-exec",
+        autoRoute: false,
+        journalPath: path.join(dir, "journal.jsonl"),
+        adapters: {
+          codexExec: {
+            codexPath: fakeCodex,
+            env: {
+              CODEX_EXEC_ARGS_PATH: argsPath,
+              CODEX_EXEC_ENV_PATH: envPath,
+              CODEX_API_KEY: "scoped-token",
+            },
+          },
+        },
+      });
+      const Schema = {
+        type: "object",
+        additionalProperties: false,
+        required: ["ok"],
+        properties: { ok: { type: "boolean" } },
+      };
+
+      const result = await engine.run(async ({ agent }) => agent("--help", { backend: "codex-exec", schema: Schema }));
+
+      assert.deepEqual(result.output, { ok: true });
+      const args = JSON.parse(await readFile(argsPath, "utf8"));
+      assert.equal(args[args.length - 2], "--");
+      assert.equal(args[args.length - 1], "--help");
+      const env = JSON.parse(await readFile(envPath, "utf8"));
+      assert.equal(env.NPM_TOKEN, null);
+      assert.equal(env.CODEX_API_KEY, "scoped-token");
+    } finally {
+      if (previousNpmToken === undefined) delete process.env.NPM_TOKEN;
+      else process.env.NPM_TOKEN = previousNpmToken;
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("applies budget skip without charging replayed nodes", async () => {

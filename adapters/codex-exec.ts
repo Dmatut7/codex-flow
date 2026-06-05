@@ -17,13 +17,13 @@ export class CodexExecAdapter implements AgentAdapter {
     const args = ["exec", "--json", "--sandbox", opts.sandbox ?? "read-only", "--skip-git-repo-check", "-o", outputPath];
     if (opts.cwd) args.push("-C", opts.cwd);
     if (schemaPath) args.push("--output-schema", schemaPath);
-    if (opts.threadId) args.push("resume", opts.threadId, prompt);
-    else args.push(prompt);
+    if (opts.threadId) args.push("resume", opts.threadId, "--", prompt);
+    else args.push("--", prompt);
 
     try {
       return await new Promise<AdapterResult>((resolve, reject) => {
         const child = spawn(String(this.adapterConfig.codexPath ?? "codex"), args, {
-          env: { ...process.env, ...(this.adapterConfig.env as Record<string, string> | undefined) },
+          env: codexExecEnv(this.adapterConfig.env as Record<string, string> | undefined),
           detached: true,
           stdio: ["ignore", "pipe", "pipe"],
         });
@@ -78,6 +78,15 @@ export class CodexExecAdapter implements AgentAdapter {
       rmSync(tmp, { recursive: true, force: true });
     }
   }
+}
+
+function codexExecEnv(extraEnv: Record<string, string> | undefined): NodeJS.ProcessEnv {
+  const keep = ["HOME", "PATH", "USER", "LOGNAME", "SHELL", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE", "CODEX_HOME"];
+  const out: NodeJS.ProcessEnv = {};
+  for (const key of keep) {
+    if (process.env[key] !== undefined) out[key] = process.env[key];
+  }
+  return { ...out, ...(extraEnv ?? {}) };
 }
 
 function parseLine(line: string): any | undefined {
