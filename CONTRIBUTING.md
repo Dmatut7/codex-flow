@@ -33,6 +33,6 @@ node bin/codex-flow.mjs smoke --backend openai-responses
 
 ## Good first areas
 
-- Better examples for common maintainer workflows: bug triage, PR review, release smoke checks.
+- Better generated prompts and templates for common maintainer workflows.
 - More real-backend compatibility smoke coverage.
-- Documentation for Codex App and Codex CLI usage.
+- Documentation for Codex App / CLI usage and real-world workflow reports.
