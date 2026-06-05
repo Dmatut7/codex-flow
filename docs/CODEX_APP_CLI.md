@@ -68,10 +68,10 @@ Completed nodes replay from the journal. Only unfinished or changed nodes call C
 codex-flow try
 ```
 
-Or run a packaged example with the fake backend:
+For a repeatable offline smoke test, `try` creates a starter workflow in the current project and forces the fake backend:
 
 ```bash
-codex-flow run node_modules/codex-flow/examples/issue-triage.workflow.ts --backend fake
+codex-flow try
 ```
 
 The fake backend returns schema-shaped output, so this works without Codex login or network.

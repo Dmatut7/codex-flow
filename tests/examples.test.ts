@@ -22,6 +22,13 @@ describe("example workflows", () => {
     }
   });
 
+  it("docs do not point global-install users at a local node_modules example path", async () => {
+    for (const file of ["docs/CODEX_APP_CLI.md", "docs/FAQ.md"]) {
+      const source = await readFile(path.resolve(file), "utf8");
+      assert.doesNotMatch(source, /node_modules\/codex-flow\/examples/, `${file} should use codex-flow try or a real local path`);
+    }
+  });
+
   it("all run through the fake backend", async () => {
     for (const file of await workflowFiles()) {
       const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-example-"));

@@ -45,7 +45,6 @@ Yes. Use the fake backend:
 
 ```bash
 codex-flow try
-codex-flow run node_modules/codex-flow/examples/issue-triage.workflow.ts --backend fake
 ```
 
 The fake backend returns schema-shaped output, so examples can smoke-test without Codex or network.
