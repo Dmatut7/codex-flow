@@ -318,6 +318,65 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("shadows crypto randomness and process.hrtime deterministically for the workflow body", async () => {
+    const runOnce = async () => {
+      const dir = await tempDir();
+      const engine = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        seed: 42,
+        journalPath: path.join(dir, "journal.jsonl"),
+      });
+      const result = await engine.run(async () => {
+        const bytes = new Uint8Array(8);
+        globalThis.crypto.getRandomValues(bytes);
+        return {
+          uuid: globalThis.crypto.randomUUID(),
+          bytes: [...bytes],
+          hr: process.hrtime(),
+          bigint: process.hrtime.bigint().toString(),
+        };
+      });
+      await rm(dir, { recursive: true, force: true });
+      return result;
+    };
+
+    const first = await runOnce();
+    const second = await runOnce();
+
+    assert.deepEqual(first, second);
+    assert.match(first.uuid, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.equal(first.bytes.length, 8);
+    assert.equal(first.hr.length, 2);
+  });
+
+  it("restores shadowed process and crypto globals after workflow run", async () => {
+    const originalHrtime = process.hrtime;
+    const originalHrtimeBigint = process.hrtime.bigint;
+    const originalRandomUUID = globalThis.crypto.randomUUID;
+    const originalGetRandomValues = globalThis.crypto.getRandomValues;
+    const dir = await tempDir();
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      seed: 7,
+      journalPath: path.join(dir, "journal.jsonl"),
+    });
+
+    await engine.run(async () => {
+      globalThis.crypto.randomUUID();
+      globalThis.crypto.getRandomValues(new Uint8Array(2));
+      process.hrtime();
+      process.hrtime.bigint();
+    });
+
+    assert.equal(process.hrtime, originalHrtime);
+    assert.equal(process.hrtime.bigint, originalHrtimeBigint);
+    assert.equal(globalThis.crypto.randomUUID, originalRandomUUID);
+    assert.equal(globalThis.crypto.getRandomValues, originalGetRandomValues);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("applies budget skip without charging replayed nodes", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");
