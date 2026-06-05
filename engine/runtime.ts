@@ -33,6 +33,7 @@ export interface EngineRuntime {
   log(msg: string, data?: unknown): void;
   now(): number;
   journalNow(): number;
+  withIsolatedGlobals<T>(key: string, fn: () => Promise<T>): Promise<T>;
 }
 
 export function makeScope(parent?: Scope, overrides: Partial<Scope> = {}): Scope {

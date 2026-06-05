@@ -219,10 +219,10 @@ async function runAdapterWithTransientRetry(
     try {
       if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new TimeoutError("agent call aborted");
       ensureWritableRegistered();
-      return await adapter.run(prompt, normalized, {
+      return await runtime.withIsolatedGlobals(`${cacheKey}:${retry}`, () => adapter.run(prompt, normalized, {
         signal,
         log: (msg, data) => runtime.log(msg, data),
-      });
+      }));
     } catch (error) {
       if (signal.aborted || error instanceof TimeoutError || !isTransient(error) || retry >= maxRetries) throw error;
     } finally {

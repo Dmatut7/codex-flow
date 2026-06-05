@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function next(): number {
@@ -9,22 +11,61 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
+interface DeterministicState {
+  randomState: number;
+  nowValue: number;
+  hrtimeNanoseconds: bigint;
+}
+
+function makeState(seed: number): DeterministicState {
+  return {
+    randomState: seed >>> 0,
+    nowValue: seed,
+    hrtimeNanoseconds: BigInt(seed) * 1_000_000n,
+  };
+}
+
+function deriveSeed(seed: number, key: string): number {
+  let hash = seed >>> 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash ^= key.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function nextRandom(state: DeterministicState): number {
+  state.randomState += 0x6D2B79F5;
+  let t = state.randomState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function nextNow(state: DeterministicState): number {
+  state.nowValue += 1;
+  return state.nowValue;
+}
+
+function nextHrtimeNanoseconds(state: DeterministicState): bigint {
+  state.hrtimeNanoseconds += 1_000_000n;
+  return state.hrtimeNanoseconds;
+}
+
 export class Determinism {
-  private readonly rand: () => number;
-  private nowValue: number;
+  private readonly seed: number;
+  private readonly workflowState: DeterministicState;
+  private readonly isolatedGlobals = new AsyncLocalStorage<DeterministicState>();
   private journalNowValue: number;
-  private hrtimeNanoseconds: bigint;
 
   constructor(seed: number) {
-    this.rand = mulberry32(seed);
-    this.nowValue = seed;
+    this.seed = seed;
+    this.workflowState = makeState(seed);
     this.journalNowValue = seed;
-    this.hrtimeNanoseconds = BigInt(seed) * 1_000_000n;
   }
 
   now(): number {
-    this.nowValue += 1;
-    return this.nowValue;
+    return nextNow(this.workflowState);
   }
 
   journalNow(): number {
@@ -33,7 +74,11 @@ export class Determinism {
   }
 
   random(): number {
-    return this.rand();
+    return nextRandom(this.workflowState);
+  }
+
+  async withIsolatedGlobals<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    return this.isolatedGlobals.run(makeState(deriveSeed(this.seed, key)), fn);
   }
 
   async withShadowedGlobals<T>(fn: () => Promise<T>): Promise<T> {
@@ -44,7 +89,7 @@ export class Determinism {
     const originalHrtimeBigint = process.hrtime.bigint;
     const originalRandomUUID = (globalThis.crypto as any)?.randomUUID;
     const originalGetRandomValues = (globalThis.crypto as any)?.getRandomValues;
-    const deterministicNow = () => this.now();
+    const deterministicNow = () => this.globalNow();
     const self = this;
     class DeterministicDate extends originalDate {
       constructor(...args: any[]) {
@@ -54,7 +99,7 @@ export class Determinism {
       static now(): number { return deterministicNow(); }
     }
     const deterministicHrtime = ((time?: [number, number]) => {
-      const current = self.nextHrtimeNanoseconds();
+      const current = self.nextGlobalHrtimeNanoseconds();
       const seconds = Number(current / 1_000_000_000n);
       const nanoseconds = Number(current % 1_000_000_000n);
       if (!time) return [seconds, nanoseconds] as [number, number];
@@ -66,11 +111,11 @@ export class Determinism {
       }
       return [deltaSeconds, deltaNanoseconds] as [number, number];
     }) as NodeJS.HRTime;
-    deterministicHrtime.bigint = () => self.nextHrtimeNanoseconds();
+    deterministicHrtime.bigint = () => self.nextGlobalHrtimeNanoseconds();
     const deterministicGetRandomValues = <TArray extends ArrayBufferView | null>(array: TArray): TArray => {
       if (!array || typeof array !== "object" || !("byteLength" in array)) return array;
       const view = new Uint8Array((array as ArrayBufferView).buffer, (array as ArrayBufferView).byteOffset, (array as ArrayBufferView).byteLength);
-      for (let i = 0; i < view.length; i += 1) view[i] = Math.floor(self.random() * 256);
+      for (let i = 0; i < view.length; i += 1) view[i] = Math.floor(self.globalRandom() * 256);
       return array;
     };
     const deterministicRandomUUID = () => {
@@ -83,7 +128,7 @@ export class Determinism {
     try {
       // Best-effort: dependencies that captured real globals at import time may still leak; scripts must keep control flow off wall-clock/RNG.
       (globalThis as any).Date = DeterministicDate;
-      Math.random = () => self.random();
+      Math.random = () => self.globalRandom();
       (process.hrtime as any) = deterministicHrtime;
       (process.hrtime as any).bigint = deterministicHrtime.bigint;
       if ((globalThis.performance as any) && originalPerformanceNow) {
@@ -113,8 +158,19 @@ export class Determinism {
     }
   }
 
-  private nextHrtimeNanoseconds(): bigint {
-    this.hrtimeNanoseconds += 1_000_000n;
-    return this.hrtimeNanoseconds;
+  private globalState(): DeterministicState {
+    return this.isolatedGlobals.getStore() ?? this.workflowState;
+  }
+
+  private globalNow(): number {
+    return nextNow(this.globalState());
+  }
+
+  private globalRandom(): number {
+    return nextRandom(this.globalState());
+  }
+
+  private nextGlobalHrtimeNanoseconds(): bigint {
+    return nextHrtimeNanoseconds(this.globalState());
   }
 }

@@ -116,6 +116,10 @@ class WorkflowEngine implements Engine, EngineRuntime {
   journalNow(): number {
     return this.determinism.journalNow();
   }
+
+  async withIsolatedGlobals<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    return this.determinism.withIsolatedGlobals(key, fn);
+  }
 }
 
 export function createEngine(config: EngineConfig = {}): Engine {

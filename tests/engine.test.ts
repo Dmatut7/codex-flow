@@ -1324,6 +1324,43 @@ console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, c
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("keeps ctx.random stable when adapter code consumes shadowed Math.random before replay", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const workflow = async ({ agent, random }: any) => {
+      const result = await agent("adapter hidden randomness", { backend: "fake" });
+      return { output: result.output, value: random() };
+    };
+
+    const first = await createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      seed: 7,
+      journalPath,
+      adapters: {
+        fake: {
+          resolver: async () => {
+            Math.random();
+            return { ok: true };
+          },
+        },
+      },
+    }).run(workflow);
+
+    const secondEngine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      seed: 7,
+      journalPath,
+      adapters: { fake: { resolver: async () => { throw new Error("should replay"); } } },
+    });
+    const second = await secondEngine.run(workflow);
+
+    assert.deepEqual(second, first);
+    assert.equal(secondEngine.adapters.fake.calls.length, 0);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("imports workflow files under deterministic shadows", async () => {
     const runOnce = async (): Promise<number> => {
       const dir = await tempDir();
