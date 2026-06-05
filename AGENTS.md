@@ -15,6 +15,32 @@
 6. **每个独立修复做一个 git commit**(如 `fix #1: transient retry`),便于逐项 review 和回滚。
 7. 没实现的部分要明确标出并停下问,禁止留 TODO/占位却声称"完成"。
 
+## Codex App 自然语言驱动层
+
+当用户在本仓库里说“启动动态工作流”“用动态工作流”“并行跑一下”“帮我拆成 workflow 跑”
+这类话时,不要要求用户自己写 workflow 文件或敲命令。你就是缺失的驱动层:
+
+1. 先用一句话复述要跑的目标;若输入材料/目标格式缺失,最多问一个必要问题。
+2. 能直接推断时,在 `.codex-workflow/generated/` 下生成临时 `*.workflow.ts`。
+   这个目录已被 `.gitignore` 忽略,用于一次性工作流草稿和 journal。
+3. workflow 必须导出 `default async function workflow(ctx)`;优先用 `ctx.parallel` /
+   `ctx.pipeline` / `ctx.phase` / `ctx.agent` 表达任务,不要写一次性大脚本绕过引擎。
+4. 默认运行命令:
+
+```bash
+npx tsx engine/cli.ts run .codex-workflow/generated/<name>.workflow.ts \
+  --backend codex-sdk \
+  --journal .codex-workflow/generated/<name>.jsonl
+```
+
+5. 默认后端是 `codex-sdk`,使用用户的 Codex/ChatGPT 登录会员权益;不要让用户提供 API key。
+   只有用户明确要 `openai-responses` 或本地/第三方模型时,才讨论对应凭据或适配器。
+6. 需要写真实仓库文件的节点必须显式传 `cwd: process.cwd()` 和
+   `sandbox: "workspace-write"`;只读/分析节点用 `sandbox: "read-only"`。
+7. 运行失败时先读错误,只修临时 workflow 或适配器暴露出的真实字段问题;不要改引擎不变量。
+8. 最终只给用户看结果摘要、失败点、journal 路径和可复跑命令;不要把整份生成脚本大段贴出,
+   除非用户要求。
+
 ## 绝不可回退的不变量(写错 = 本次失败)
 
 **Codex API 事实(已实测核对,见设计文档附录 A):**
