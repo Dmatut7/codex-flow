@@ -175,9 +175,10 @@ async function runAdapterWithTransientRetry(
   const maxRetries = runtime.config.transientRetries ?? 3;
   const baseMs = runtime.config.transientBaseMs ?? 500;
   for (let retry = 0; ; retry++) {
-    const release = await runtime.semaphore.acquire();
+    const release = await runtime.semaphore.acquire(signal);
     let releaseWritable = () => {};
     try {
+      if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new TimeoutError("agent call aborted");
       releaseWritable = registerWritableCwd(runtime, normalized);
       return await adapter.run(prompt, normalized, {
         signal,

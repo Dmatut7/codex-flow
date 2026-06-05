@@ -245,6 +245,37 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("does not start an agent that timed out while waiting for concurrency", async () => {
+    const dir = await tempDir();
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const started: string[] = [];
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      concurrency: 1,
+      journalPath: path.join(dir, "journal.jsonl"),
+      adapters: {
+        fake: {
+          resolver: async ({ prompt }) => {
+            started.push(prompt);
+            if (prompt === "first") await delay(80);
+            return { prompt };
+          },
+        },
+      },
+    });
+
+    const [first, second] = await engine.run(async ({ agent }) => Promise.all([
+      agent("first", { backend: "fake" }),
+      agent("second", { backend: "fake", timeoutMs: 10 }),
+    ]));
+
+    assert.equal(first.status, "ok");
+    assert.equal(second.status, "error");
+    assert.deepEqual(started, ["first"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("uses the real cwd for workspace-write nodes", async () => {
     const dir = await tempDir();
     const realCwd = path.join(dir, "repo");
