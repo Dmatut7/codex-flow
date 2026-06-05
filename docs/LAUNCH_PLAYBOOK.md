@@ -59,6 +59,27 @@ Repo: https://github.com/Dmatut7/codex-flow
 Dynamic workflow orchestration for Codex: parallel, resumable, journaled sub-agents for bug investigations, PR review, issue triage, and release checks.
 ```
 
+## npm publish checklist
+
+Current state: GitHub install remains the public fallback; npm publish is prepared but requires the maintainer's publish-time OTP.
+
+When the OTP is available, publish with:
+
+```bash
+npm publish --access public --otp <6-digit-code>
+```
+
+Then verify:
+
+```bash
+npm view codex-flow version
+npm install -g codex-flow
+codex-flow --version
+codex-flow doctor
+```
+
+If npm reports that 2FA is required, generate a fresh OTP and rerun the same publish command. Do not move or retag `v0.2.0`; publish from the current release tag/version instead.
+
 ## Demo script
 
 1. Install:
