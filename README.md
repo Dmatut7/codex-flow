@@ -1,5 +1,10 @@
 # codex-flow — dynamic workflows for Codex
 
+[![Release](https://img.shields.io/github/v/release/Dmatut7/codex-flow?sort=semver)](https://github.com/Dmatut7/codex-flow/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node >=18](https://img.shields.io/badge/node-%3E%3D18-339933.svg)](package.json)
+[![Codex App / CLI](https://img.shields.io/badge/Codex-App%20%2F%20CLI-111827.svg)](docs/FAQ.md)
+
 ![codex-flow banner](assets/codex-flow-banner.svg)
 
 Turn one natural-language request in Codex App or Codex CLI into **parallel, resumable, journaled Codex sub-agents**.

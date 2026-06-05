@@ -23,7 +23,17 @@
     "resume",
     "journaling",
     "orchestration",
-    "openai"
+    "openai",
+    "codex-sdk",
+    "codex-workflow",
+    "dynamic-workflow",
+    "ai-agents",
+    "developer-tools",
+    "code-review",
+    "bug-triage",
+    "issue-triage",
+    "release-automation",
+    "agent-orchestration"
   ],
   "bin": {
     "codex-flow": "bin/codex-flow.mjs",
