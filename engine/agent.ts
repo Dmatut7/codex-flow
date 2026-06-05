@@ -267,7 +267,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 
 export async function ensureWritableIsolation(runtime: EngineRuntime, opts: AgentOpts, key: string): Promise<string | undefined> {
   const sandbox = opts.sandbox ?? "read-only";
-  if (sandbox === "read-only") return opts.cwd ? path.resolve(opts.cwd) : undefined;
+  if (sandbox === "read-only") return path.resolve(opts.cwd ?? process.cwd());
   if (!opts.cwd) throw new Error("workspace-write/danger-full-access requires opts.cwd");
   return realWritableCwd(opts.cwd);
 }
@@ -284,8 +284,9 @@ function registerWritableCwd(runtime: EngineRuntime, normalized: NormalizedAgent
 }
 
 function cacheCwdFor(opts: AgentOpts): string | undefined {
+  const sandbox = opts.sandbox ?? "read-only";
+  if (sandbox === "read-only") return path.resolve(opts.cwd ?? process.cwd());
   if (!opts.cwd) return undefined;
-  if ((opts.sandbox ?? "read-only") === "read-only") return path.resolve(opts.cwd);
   return realWritableCwd(opts.cwd);
 }
 

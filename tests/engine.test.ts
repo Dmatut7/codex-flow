@@ -1087,6 +1087,44 @@ console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, c
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("does not replay implicit-cwd nodes across different process cwd values", async () => {
+    const originalCwd = process.cwd();
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const repoA = path.join(dir, "repo-a");
+    const repoB = path.join(dir, "repo-b");
+    await mkdir(repoA, { recursive: true });
+    await mkdir(repoB, { recursive: true });
+
+    try {
+      process.chdir(repoA);
+      const first = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        journalPath,
+        adapters: { fake: { resolver: async () => ({ cwd: process.cwd() }) } },
+      });
+      const firstResult = await first.run(async ({ agent }) => agent<{ cwd: string }>("read implicit cwd", { backend: "fake" }));
+
+      process.chdir(repoB);
+      const second = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        journalPath,
+        adapters: { fake: { resolver: async () => ({ cwd: process.cwd() }) } },
+      });
+      const secondResult = await second.run(async ({ agent }) => agent<{ cwd: string }>("read implicit cwd", { backend: "fake" }));
+
+      assert.equal(firstResult.output.cwd, await realpath(repoA));
+      assert.equal(secondResult.replayed, false);
+      assert.equal(second.adapters.fake.calls.length, 1);
+      assert.equal(secondResult.output.cwd, await realpath(repoB));
+    } finally {
+      process.chdir(originalCwd);
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("resets deterministic counters for each run on the same engine", async () => {
     const dir = await tempDir();
     const engine = createEngine({
