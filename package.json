@@ -29,11 +29,16 @@
     "codex-flow": "bin/codex-flow.mjs",
     "dongt": "bin/codex-flow.mjs"
   },
+  "types": "./index.d.ts",
   "exports": {
-    ".": "./index.mjs"
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs"
+    }
   },
   "files": [
     "index.mjs",
+    "index.d.ts",
     "bin",
     "cli",
     "engine",

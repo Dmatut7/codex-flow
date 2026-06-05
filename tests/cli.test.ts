@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,6 +10,8 @@ import { installCodex } from "../cli/install-codex.ts";
 
 const binPath = fileURLToPath(new URL("../bin/codex-flow.mjs", import.meta.url));
 const rootExportUrl = pathToFileURL(fileURLToPath(new URL("../index.mjs", import.meta.url))).href;
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const tscPath = fileURLToPath(new URL("../node_modules/.bin/tsc", import.meta.url));
 
 describe("codex-flow cli", () => {
   it("root package export works from plain node", () => {
@@ -22,6 +24,45 @@ describe("codex-flow cli", () => {
     const res = spawnSync("node", ["--input-type=module", "-e", code], { encoding: "utf8" });
     assert.equal(res.status, 0, res.stderr);
     assert.match(res.stdout, /"prompt":"root export"/);
+  });
+
+  it("root package export provides TypeScript types to consumers", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-types-"));
+    await mkdir(path.join(dir, "node_modules"), { recursive: true });
+    await symlink(repoRoot, path.join(dir, "node_modules", "codex-flow"));
+    await writeFile(path.join(dir, "package.json"), '{"type":"module"}\n', "utf8");
+    await writeFile(
+      path.join(dir, "consumer.ts"),
+      `
+        import { createEngine, type WorkflowContext } from "codex-flow";
+
+        const engine = createEngine({ defaultBackend: "fake", autoRoute: false });
+        const workflow = async (ctx: WorkflowContext) => {
+          const result = await ctx.agent<{ prompt: string }>("typed", { backend: "fake" });
+          return result.output.prompt;
+        };
+        await engine.run(workflow);
+      `,
+      "utf8",
+    );
+    await writeFile(
+      path.join(dir, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          target: "ES2022",
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          strict: true,
+          skipLibCheck: true,
+        },
+        include: ["consumer.ts"],
+      }),
+      "utf8",
+    );
+
+    const res = spawnSync(tscPath, ["--project", "tsconfig.json", "--noEmit"], { cwd: dir, encoding: "utf8" });
+    assert.equal(res.status, 0, res.stderr || res.stdout);
+    await rm(dir, { recursive: true, force: true });
   });
 
   it("install-codex copies the skill into the target dir", async () => {
