@@ -421,6 +421,76 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+
+  it("produces the same cache key sequence for the same script and seed", async () => {
+    const runOnce = async (): Promise<string[]> => {
+      const dir = await tempDir();
+      const journalPath = path.join(dir, "journal.jsonl");
+      const engine = createEngine({
+        defaultBackend: "fake",
+        autoRoute: false,
+        seed: 98765,
+        journalPath,
+        adapters: { fake: { responses: [{ step: 1 }, { step: 2 }, { step: 3 }] } },
+      });
+
+      await engine.run(async ({ agent, now, random }) => {
+        const marker = `${now()}:${random().toFixed(8)}`;
+        await agent(`first:${marker}`, { backend: "fake" });
+        await agent(`second:${marker}`, { backend: "fake" });
+        await agent(`third:${marker}`, { backend: "fake" });
+      });
+
+      const keys = (await readJsonl(journalPath))
+        .filter((line) => line.type === "node")
+        .map((line) => line.key);
+      await rm(dir, { recursive: true, force: true });
+      return keys;
+    };
+
+    assert.deepEqual(await runOnce(), await runOnce());
+  });
+
+  it("reruns a node when the journal ends with a non-terminal repair record", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const Schema = z.object({ ok: z.boolean() }).strict();
+    const workflow = async ({ agent }: any) => agent("repair then crash", {
+      backend: "fake",
+      schema: Schema,
+      retries: 1,
+    });
+
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: ['{"ok":"no"}', { ok: true }] } },
+    });
+    await first.run(workflow);
+
+    const initialRecords = await readJsonl(journalPath);
+    const repairOnly = initialRecords.filter((line) => line.type === "manifest" || line.status === "repair");
+    assert.deepEqual(repairOnly.map((line) => line.type === "node" ? line.status : line.type), ["manifest", "repair"]);
+    await writeFile(journalPath, repairOnly.map((line) => JSON.stringify(line)).join("\n") + "\n", "utf8");
+
+    const resumed = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [{ ok: true }] } },
+    });
+    const result = await resumed.run(workflow);
+
+    assert.deepEqual(result.output, { ok: true });
+    assert.equal(resumed.adapters.fake.calls.length, 1);
+    const statuses = (await readJsonl(journalPath))
+      .filter((line) => line.type === "node")
+      .map((line) => line.status);
+    assert.deepEqual(statuses, ["repair", "terminal"]);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("ignores a trailing crash residue when loading journal", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");
