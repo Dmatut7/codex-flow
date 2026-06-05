@@ -1,0 +1,17 @@
+{
+  "defaultBackend": "codex-sdk",
+  "autoRoute": true,
+  "concurrency": 4,
+  "seed": 123456,
+  "estimatedTokensPerCall": 1000,
+  "budget": {
+    "maxTokens": 400000,
+    "maxNodes": 50,
+    "onExceeded": "throw"
+  },
+  "adapters": {
+    "codexSdk": {},
+    "codexExec": {},
+    "openaiResponses": {}
+  }
+}
