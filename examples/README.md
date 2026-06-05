@@ -7,8 +7,7 @@ These examples show what `codex-flow` is meant to unlock for Codex users: mainta
 After installing the bundled Codex skill:
 
 ```bash
-codex-flow init
-codex-flow run .codex-flow/generated/starter.workflow.ts --backend fake
+codex-flow try
 codex-flow install-codex
 codex-flow doctor
 ```

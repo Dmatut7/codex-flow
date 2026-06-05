@@ -6,6 +6,7 @@ import { init } from "./init.ts";
 import { installCodex } from "./install-codex.ts";
 import { run } from "./run.ts";
 import { smoke } from "./smoke.ts";
+import { tryStarter } from "./try.ts";
 
 function version(): string {
   try {
@@ -21,6 +22,7 @@ const HELP = `codex-flow — dynamic workflow engine for Codex
 Usage:
   codex-flow install-codex [--dir <skills-dir>]   Install the Codex skill (default: $CODEX_HOME/skills)
   codex-flow init [--force]                       Create a starter workflow in .codex-flow/generated/
+  codex-flow try                                  Create + run the starter workflow with fake backend
   codex-flow run <workflow.ts> [--backend <name>] [--journal <path>]
                                              Run a workflow (default backend: codex-sdk, resumes on re-run)
   codex-flow doctor [--json]                Check local install, Codex skill, and fake backend
@@ -40,6 +42,9 @@ async function main(): Promise<void> {
       break;
     case "init":
       await init(rest);
+      break;
+    case "try":
+      await tryStarter(rest);
       break;
     case "doctor":
       await doctor(rest);

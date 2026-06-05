@@ -87,4 +87,19 @@ describe("codex-flow cli", () => {
     assert.ok(existsSync(path.join(dir, ".codex-flow", "journal", "starter.jsonl")), "default journal should exist");
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("try creates and runs the starter workflow in one command", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-try-"));
+    const res = spawnSync("node", [binPath, "try"], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /codex-flow try/);
+    assert.match(res.stdout, /README first impression/);
+    assert.match(res.stdout, /codex-flow install-codex/);
+    assert.ok(existsSync(path.join(dir, ".codex-flow", "generated", "starter.workflow.ts")), "starter workflow should exist");
+    assert.ok(existsSync(path.join(dir, ".codex-flow", "journal", "starter.jsonl")), "starter journal should exist");
+    await rm(dir, { recursive: true, force: true });
+  });
 });

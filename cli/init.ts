@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+export const STARTER_WORKFLOW_PATH = ".codex-flow/generated/starter.workflow.ts";
+
 const STARTER = `export default async function workflow(ctx) {
   const { agent, parallel, phase, log } = ctx;
 
@@ -26,7 +28,7 @@ const STARTER = `export default async function workflow(ctx) {
 
 export async function init(argv: string[]): Promise<void> {
   const force = argv.includes("--force");
-  const dir = path.join(process.cwd(), ".codex-flow", "generated");
+  const dir = path.join(process.cwd(), path.dirname(STARTER_WORKFLOW_PATH));
   const file = path.join(dir, "starter.workflow.ts");
 
   mkdirSync(dir, { recursive: true });
