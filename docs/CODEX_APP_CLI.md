@@ -33,7 +33,20 @@ codex-flow doctor
 
 Restart Codex App or Codex CLI after installing the skill.
 
-## 3. Use it in any project
+## 3. Update the installed skills later
+
+If `codex-flow` releases updated skills, users who already installed it should run:
+
+```bash
+npm install -g codex-flow@latest
+codex-flow install-codex
+codex-flow doctor
+# restart Codex App or Codex CLI
+```
+
+`npm install -g` updates the package. `codex-flow install-codex` is still required because Codex uses copied files under `~/.codex/skills`.
+
+## 4. Use it in any project
 
 Open the target repository in Codex and say one of these:
 
@@ -52,7 +65,7 @@ Codex should:
 3. write `.codex-flow/journal/<task>.jsonl`,
 4. summarize the parallel branches and result.
 
-## 4. Resume after interruption
+## 5. Resume after interruption
 
 Run the same command again:
 
@@ -62,7 +75,7 @@ codex-flow run .codex-flow/generated/<task>.workflow.ts
 
 Completed nodes replay from the journal. Only unfinished or changed nodes call Codex again.
 
-## 5. Try without network first
+## 6. Try without network first
 
 ```bash
 codex-flow try
@@ -70,7 +83,7 @@ codex-flow try
 
 `try` creates a starter workflow in the current project and forces the fake backend, so this works without Codex login or network.
 
-## 6. Membership vs API key
+## 7. Membership vs API key
 
 Default backend: `codex-sdk`.
 
@@ -78,7 +91,7 @@ That uses your logged-in Codex / ChatGPT account. No OpenAI API key is needed fo
 
 Only the optional `openai-responses` backend needs `OPENAI_API_KEY`.
 
-## 7. If Codex does not start a workflow
+## 8. If Codex does not start a workflow
 
 Use a direct trigger phrase:
 
@@ -101,7 +114,7 @@ codex-flow install-codex
 
 Restart Codex and try again.
 
-## 8. If the workflow fails
+## 9. If the workflow fails
 
 Most failures are in the generated workflow, not the engine. Ask Codex to fix the generated file and rerun the same command.
 
@@ -113,7 +126,7 @@ codex-flow run .codex-flow/generated/<task>.workflow.ts --backend fake
 codex-flow smoke --backend codex-sdk
 ```
 
-## 9. When to use it
+## 10. When to use it
 
 Use `codex-flow` for tasks that can be split:
 

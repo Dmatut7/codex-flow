@@ -69,6 +69,26 @@ npx npm@^11.10.0 trust github codex-flow \
   --yes
 ```
 
+## How users receive updated Codex skills
+
+Important: publishing a new npm version does not automatically rewrite a user's installed Codex skill files.
+
+`codex-flow install-codex` copies the bundled skills from the installed package into the user's Codex home:
+
+- source: global npm package contents
+- target: `~/.codex/skills/dynamic-workflow`
+- target: `~/.codex/skills/business-defect-audit`
+- target: `~/.codex/skills/parallel-fix`
+
+So every user-facing skill update needs two user commands after the npm release:
+
+```bash
+npm install -g codex-flow@latest
+codex-flow install-codex
+```
+
+Then they should restart Codex App or Codex CLI. `codex-flow doctor` can confirm whether the installed skills are present/current.
+
 ## Updating Codex skills after someone changes this repo
 
 The bundled skills live in:
@@ -77,7 +97,7 @@ The bundled skills live in:
 - `codex-skill-business-audit/` → installs as `business-defect-audit`
 - `codex-skill-parallel-fix/` → installs as `parallel-fix`
 
-For users installed from npm:
+Short user-facing update instructions:
 
 ```bash
 npm install -g codex-flow@latest

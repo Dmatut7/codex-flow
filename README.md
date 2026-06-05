@@ -27,6 +27,20 @@ Then open **any** project in Codex and say:
 GitHub fallback if npm is unavailable: `npm install -g github:Dmatut7/codex-flow`.
 `dongt` remains as a compatibility alias, but the public package and docs use `codex-flow`.
 
+## Update installed Codex skills
+
+When `codex-flow` ships updated skills, update both the npm package and the copied Codex skills:
+
+```bash
+npm install -g codex-flow@latest
+codex-flow install-codex
+codex-flow doctor
+# restart Codex App or Codex CLI
+```
+
+Why both steps? `npm install -g` updates the CLI package; `codex-flow install-codex` copies the bundled skills into `~/.codex/skills`.
+Codex reads those installed skill files after restart.
+
 ## What it feels like
 
 ![codex-flow animated demo](assets/codex-flow-demo.gif)
