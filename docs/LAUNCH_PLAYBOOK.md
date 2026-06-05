@@ -21,6 +21,14 @@ Codex is powerful, but a normal turn is linear. `codex-flow` lets maintainers sa
 - Journaled runs make agent work auditable.
 - The Codex skill makes it feel like a native natural-language feature instead of a library users must learn first.
 
+## Positioning
+
+Use this line when people ask “why not just use X?”:
+
+```text
+codex-flow is not a general graph framework or a replacement for Codex. It is a small workflow layer that lets Codex App / CLI generate and execute parallel, resumable, journaled maintainer workflows.
+```
+
 ## Suggested posts
 
 ### X / Twitter
