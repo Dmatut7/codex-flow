@@ -6,6 +6,7 @@ import path from "node:path";
 import { z } from "zod";
 import { createEngine } from "../engine/index.ts";
 import { ConcurrentWritableCwdError, TimeoutError } from "../engine/agent.ts";
+import { Semaphore } from "../engine/semaphore.ts";
 import { normalizeSchema, parseAndValidate } from "../engine/schema.ts";
 import { resolveBackend } from "../adapters/registry.ts";
 import { OpenAIResponsesAdapter } from "../adapters/openai-responses.ts";
@@ -20,6 +21,36 @@ async function readJsonl(file: string): Promise<any[]> {
 }
 
 describe("dynamic workflow engine", () => {
+  it("does not over-admit semaphore callers when a new acquire races a queued waiter", async () => {
+    const semaphore = new Semaphore(1);
+    let active = 0;
+    let maxActive = 0;
+    const enter = () => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      return () => { active -= 1; };
+    };
+
+    const releaseA = await semaphore.acquire();
+    const leaveA = enter();
+    const b = semaphore.acquire().then((release) => ({ release, leave: enter() }));
+
+    leaveA();
+    releaseA();
+
+    const c = semaphore.acquire().then((release) => ({ release, leave: enter() }));
+    const bHandle = await b;
+    await Promise.resolve();
+
+    assert.equal(maxActive, 1);
+
+    bHandle.leave();
+    bHandle.release();
+    const cHandle = await c;
+    cHandle.leave();
+    cHandle.release();
+  });
+
   it("runs a linear fake workflow and writes logs to journal", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

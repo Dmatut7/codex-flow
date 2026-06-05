@@ -1,6 +1,6 @@
 export class Semaphore {
   private active = 0;
-  private queue: Array<{ resolve: () => void; reject: (error: unknown) => void; signal?: AbortSignal; onAbort?: () => void }> = [];
+  private queue: Array<{ resolve: (release: () => void) => void; reject: (error: unknown) => void; signal?: AbortSignal; onAbort?: () => void }> = [];
 
   constructor(private readonly width: number) {}
 
@@ -10,8 +10,8 @@ export class Semaphore {
       this.active++;
       return () => this.release();
     }
-    const waiter = await new Promise<{ signal?: AbortSignal; onAbort?: () => void }>((resolve, reject) => {
-      const queued = { resolve: () => resolve(queued), reject, signal } as { resolve: () => void; reject: (error: unknown) => void; signal?: AbortSignal; onAbort?: () => void };
+    return new Promise<() => void>((resolve, reject) => {
+      const queued = { resolve, reject, signal } as { resolve: (release: () => void) => void; reject: (error: unknown) => void; signal?: AbortSignal; onAbort?: () => void };
       queued.onAbort = () => {
         this.queue = this.queue.filter((item) => item !== queued);
         reject(abortError(signal));
@@ -19,16 +19,21 @@ export class Semaphore {
       signal?.addEventListener("abort", queued.onAbort, { once: true });
       this.queue.push(queued);
     });
-    if (waiter.onAbort) waiter.signal?.removeEventListener("abort", waiter.onAbort);
-    if (signal?.aborted) throw abortError(signal);
-    this.active++;
-    return () => this.release();
   }
 
   private release(): void {
-    this.active = Math.max(0, this.active - 1);
     const next = this.queue.shift();
-    if (next) next.resolve();
+    if (next) {
+      if (next.onAbort) next.signal?.removeEventListener("abort", next.onAbort);
+      if (next.signal?.aborted) {
+        next.reject(abortError(next.signal));
+        this.release();
+        return;
+      }
+      next.resolve(() => this.release());
+      return;
+    }
+    this.active = Math.max(0, this.active - 1);
   }
 }
 
