@@ -1,6 +1,6 @@
 {
   "name": "codex-flow",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Dynamic workflow orchestration for Codex — split complex tasks into parallel, resumable, journaled Codex sub-agents.",
   "type": "module",
   "license": "MIT",
@@ -55,6 +55,7 @@
     "adapters",
     "codex-skill",
     "codex-skill-business-audit",
+    "codex-skill-parallel-fix",
     "README.md",
     "examples",
     "docs",

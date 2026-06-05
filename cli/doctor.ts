@@ -100,6 +100,33 @@ function checkBusinessAuditSkill(): Check {
   };
 }
 
+function checkParallelFixSkill(): Check {
+  const skillDir = path.join(codexHome(), "skills", "parallel-fix");
+  const skillPath = path.join(skillDir, "SKILL.md");
+  const required = [
+    skillPath,
+    path.join(skillDir, "references", "fix-method.md"),
+    path.join(skillDir, "references", "fix-template.workflow.ts"),
+    path.join(skillDir, "agents", "openai.yaml"),
+  ];
+  if (existsSync(skillPath)) {
+    const missing = required.filter((file) => !existsSync(file));
+    if (!missing.length) return { name: "parallel fix skill", status: "ok", detail: skillPath };
+    return {
+      name: "parallel fix skill",
+      status: "warn",
+      detail: `stale or incomplete: ${skillDir}`,
+      next: "Run `codex-flow install-codex`, then restart Codex.",
+    };
+  }
+  return {
+    name: "parallel fix skill",
+    status: "warn",
+    detail: `missing: ${skillPath}`,
+    next: "Run `codex-flow install-codex`, then restart Codex.",
+  };
+}
+
 async function checkFakeBackend(): Promise<Check> {
   let dir: string;
   try {
@@ -146,6 +173,7 @@ export async function doctor(argv: string[]): Promise<void> {
     checkNode(),
     checkSkill(),
     checkBusinessAuditSkill(),
+    checkParallelFixSkill(),
     checkCodexCli(),
     await checkFakeBackend(),
   ];

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.4 — 2026-06-05
 
 - Added the `parallel-fix` Codex skill and example workflow for proposing independent fixes concurrently, then integrating and verifying serially.
 - Hardened replay/cache correctness: implicit cwd is now part of cache identity, nested phases inside parallel no longer alias, and failed topology branches keep completed child dependencies for downstream invalidation.

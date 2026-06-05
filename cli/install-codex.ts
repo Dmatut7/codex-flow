@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const SKILLS = [
   { src: "../codex-skill", name: "dynamic-workflow" },
   { src: "../codex-skill-business-audit", name: "business-defect-audit" },
+  { src: "../codex-skill-parallel-fix", name: "parallel-fix" },
 ];
 
 function codexHome(): string {

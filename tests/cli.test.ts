@@ -86,6 +86,9 @@ describe("codex-flow cli", () => {
     assert.match(text, /name: dynamic-workflow/);
     assert.ok(existsSync(path.join(dir, "dynamic-workflow", "references", "engine-api.md")), "reference should be copied");
     assert.ok(existsSync(path.join(dir, "dynamic-workflow", "references", "setup.md")), "setup reference should be copied");
+    assert.ok(existsSync(path.join(dir, "business-defect-audit", "SKILL.md")), "business audit skill should be copied");
+    assert.ok(existsSync(path.join(dir, "parallel-fix", "SKILL.md")), "parallel fix skill should be copied");
+    assert.ok(existsSync(path.join(dir, "parallel-fix", "references", "fix-method.md")), "parallel fix reference should be copied");
     await rm(dir, { recursive: true, force: true });
   });
 
@@ -202,6 +205,35 @@ describe("codex-flow cli", () => {
     assert.equal(businessSkill.status, "warn");
     assert.match(businessSkill.detail, /business-defect-audit/);
     assert.match(businessSkill.next, /codex-flow install-codex/);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("doctor warns when the bundled parallel fix skill is missing", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-doctor-"));
+    const dynamicRefs = path.join(dir, "skills", "dynamic-workflow", "references");
+    const auditRefs = path.join(dir, "skills", "business-defect-audit", "references");
+    const auditAgents = path.join(dir, "skills", "business-defect-audit", "agents");
+    await mkdir(dynamicRefs, { recursive: true });
+    await mkdir(auditRefs, { recursive: true });
+    await mkdir(auditAgents, { recursive: true });
+    await writeFile(path.join(dir, "skills", "dynamic-workflow", "SKILL.md"), "---\nname: dynamic-workflow\n---\n", "utf8");
+    await writeFile(path.join(dynamicRefs, "engine-api.md"), "api\n", "utf8");
+    await writeFile(path.join(dynamicRefs, "setup.md"), "setup\n", "utf8");
+    await writeFile(path.join(dir, "skills", "business-defect-audit", "SKILL.md"), "---\nname: business-defect-audit\n---\n", "utf8");
+    await writeFile(path.join(auditRefs, "audit-method.md"), "method\n", "utf8");
+    await writeFile(path.join(auditRefs, "audit-template.workflow.ts"), "workflow\n", "utf8");
+    await writeFile(path.join(auditAgents, "openai.yaml"), "agent\n", "utf8");
+
+    const res = spawnSync("node", [binPath, "doctor", "--json"], {
+      encoding: "utf8",
+      env: { ...process.env, CODEX_HOME: dir },
+    });
+    assert.equal(res.status, 0, res.stderr);
+    const body = JSON.parse(res.stdout);
+    const parallelSkill = body.checks.find((check: any) => check.name === "parallel fix skill");
+    assert.equal(parallelSkill.status, "warn");
+    assert.match(parallelSkill.detail, /parallel-fix/);
+    assert.match(parallelSkill.next, /codex-flow install-codex/);
     await rm(dir, { recursive: true, force: true });
   });
 
