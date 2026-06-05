@@ -66,6 +66,8 @@ Dynamic workflow orchestration for Codex: parallel, resumable, journaled sub-age
 ```bash
 npm install -g github:Dmatut7/codex-flow
 codex-flow doctor
+codex-flow init
+codex-flow run .codex-flow/generated/starter.workflow.ts --backend fake
 codex-flow install-codex
 codex-flow doctor
 ```

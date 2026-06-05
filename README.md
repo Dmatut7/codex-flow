@@ -33,6 +33,8 @@ Prefer a static version? See the [storyboard SVG](assets/codex-flow-demo.svg).
 ```bash
 npm install -g github:Dmatut7/codex-flow  # installs the `codex-flow` CLI
 codex-flow doctor                       # checks local install + fake backend
+codex-flow init                         # creates .codex-flow/generated/starter.workflow.ts
+codex-flow run .codex-flow/generated/starter.workflow.ts --backend fake
 codex-flow install-codex                # installs the "dynamic-workflow" skill into Codex
 codex-flow doctor                       # confirms the Codex skill is installed
 # restart Codex

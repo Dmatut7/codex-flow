@@ -60,4 +60,31 @@ describe("codex-flow cli", () => {
     assert.match(skill.next, /codex-flow install-codex/);
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("init creates a starter workflow that runs through the fake backend", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-init-"));
+    const init = spawnSync("node", [binPath, "init"], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+    assert.equal(init.status, 0, init.stderr);
+    const wf = path.join(dir, ".codex-flow", "generated", "starter.workflow.ts");
+    assert.ok(existsSync(wf), "starter workflow should exist");
+
+    const second = spawnSync("node", [binPath, "init"], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+    assert.equal(second.status, 2);
+    assert.match(second.stderr, /already exists/);
+
+    const run = spawnSync("node", [binPath, "run", wf, "--backend", "fake"], {
+      encoding: "utf8",
+      cwd: dir,
+    });
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /README first impression/);
+    assert.ok(existsSync(path.join(dir, ".codex-flow", "journal", "starter.jsonl")), "default journal should exist");
+    await rm(dir, { recursive: true, force: true });
+  });
 });
