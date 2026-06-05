@@ -175,6 +175,29 @@ describe("codex-flow cli", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("doctor warns when the bundled business audit skill is missing", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-doctor-"));
+    const skillDir = path.join(dir, "skills", "dynamic-workflow", "references");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(path.join(dir, "skills", "dynamic-workflow", "SKILL.md"), "---\nname: dynamic-workflow\n---\n", "utf8");
+    await writeFile(path.join(skillDir, "engine-api.md"), "api\n", "utf8");
+    await writeFile(path.join(skillDir, "setup.md"), "setup\n", "utf8");
+
+    const res = spawnSync("node", [binPath, "doctor", "--json"], {
+      encoding: "utf8",
+      env: { ...process.env, CODEX_HOME: dir },
+    });
+    assert.equal(res.status, 0, res.stderr);
+    const body = JSON.parse(res.stdout);
+    const dynamicSkill = body.checks.find((check: any) => check.name === "codex skill");
+    const businessSkill = body.checks.find((check: any) => check.name === "business audit skill");
+    assert.equal(dynamicSkill.status, "ok");
+    assert.equal(businessSkill.status, "warn");
+    assert.match(businessSkill.detail, /business-defect-audit/);
+    assert.match(businessSkill.next, /codex-flow install-codex/);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("init creates a starter workflow that runs through the fake backend", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "codex-flow-init-"));
     const init = spawnSync("node", [binPath, "init"], {

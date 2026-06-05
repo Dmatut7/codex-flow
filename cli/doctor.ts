@@ -73,6 +73,33 @@ function checkSkill(): Check {
   };
 }
 
+function checkBusinessAuditSkill(): Check {
+  const skillDir = path.join(codexHome(), "skills", "business-defect-audit");
+  const skillPath = path.join(skillDir, "SKILL.md");
+  const required = [
+    skillPath,
+    path.join(skillDir, "references", "audit-method.md"),
+    path.join(skillDir, "references", "audit-template.workflow.ts"),
+    path.join(skillDir, "agents", "openai.yaml"),
+  ];
+  if (existsSync(skillPath)) {
+    const missing = required.filter((file) => !existsSync(file));
+    if (!missing.length) return { name: "business audit skill", status: "ok", detail: skillPath };
+    return {
+      name: "business audit skill",
+      status: "warn",
+      detail: `stale or incomplete: ${skillDir}`,
+      next: "Run `codex-flow install-codex`, then restart Codex.",
+    };
+  }
+  return {
+    name: "business audit skill",
+    status: "warn",
+    detail: `missing: ${skillPath}`,
+    next: "Run `codex-flow install-codex`, then restart Codex.",
+  };
+}
+
 async function checkFakeBackend(): Promise<Check> {
   const dir = mkdtempSync(path.join(os.tmpdir(), "codex-flow-doctor-"));
   try {
@@ -108,6 +135,7 @@ export async function doctor(argv: string[]): Promise<void> {
     { name: "codex-flow", status: "ok", detail: packageVersion() },
     checkNode(),
     checkSkill(),
+    checkBusinessAuditSkill(),
     checkCodexCli(),
     await checkFakeBackend(),
   ];
