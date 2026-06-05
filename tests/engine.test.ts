@@ -8,6 +8,7 @@ import { createEngine } from "../engine/index.ts";
 import { ConcurrentWritableCwdError, TimeoutError } from "../engine/agent.ts";
 import { normalizeSchema, parseAndValidate } from "../engine/schema.ts";
 import { resolveBackend } from "../adapters/registry.ts";
+import { OpenAIResponsesAdapter } from "../adapters/openai-responses.ts";
 
 async function tempDir(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "codex-workflow-test-"));
@@ -661,6 +662,39 @@ describe("dynamic workflow engine", () => {
     assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { isolate: false }), "codex-sdk");
     assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { isolate: true }), "codex-exec");
     assert.equal(resolveBackend({ defaultBackend: "codex-sdk", autoRoute: true }, { backend: "codex-sdk", isolate: true }), "codex-sdk");
+  });
+
+  it("passes abort signals through openai-responses requests", async () => {
+    const adapter = new OpenAIResponsesAdapter({}, { defaultModel: "test-model" }) as any;
+    const calls: any[] = [];
+    adapter.client = {
+      responses: {
+        create: async (...args: any[]) => {
+          calls.push(args);
+          return {
+            id: "resp-1",
+            output_parsed: { ok: true },
+            usage: { input_tokens: 1, output_tokens: 1 },
+          };
+        },
+      },
+    };
+    const abortController = new AbortController();
+    const schema = normalizeSchema({
+      type: "object",
+      additionalProperties: false,
+      required: ["ok"],
+      properties: { ok: { type: "boolean" } },
+    });
+
+    const result = await adapter.run("prompt", {
+      backend: "openai-responses",
+      sandbox: "read-only",
+      schema,
+    }, { signal: abortController.signal });
+
+    assert.deepEqual(JSON.parse(result.finalResponse), { ok: true });
+    assert.equal(calls[0][1]?.signal, abortController.signal);
   });
 
   it("passes codex-exec prompts as data and limits inherited environment", async () => {

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { AgentAdapter, AdapterResult, NormalizedAgentOpts } from "./types.ts";
+import type { AdapterRuntime, AgentAdapter, AdapterResult, NormalizedAgentOpts } from "./types.ts";
 import type { EngineConfig, Usage } from "../engine/types.ts";
 
 export class OpenAIResponsesAdapter implements AgentAdapter {
@@ -8,7 +8,7 @@ export class OpenAIResponsesAdapter implements AgentAdapter {
 
   constructor(private readonly adapterConfig: Record<string, unknown> = {}, private readonly engineConfig: EngineConfig = {}) {}
 
-  async run(prompt: string, opts: NormalizedAgentOpts): Promise<AdapterResult> {
+  async run(prompt: string, opts: NormalizedAgentOpts, runtime: AdapterRuntime): Promise<AdapterResult> {
     this.client ??= new OpenAI(this.adapterConfig as any);
     if (!opts.schema) throw new Error("openai-responses backend requires a schema");
     const response: any = await this.client.responses.create({
@@ -17,7 +17,7 @@ export class OpenAIResponsesAdapter implements AgentAdapter {
       text: { format: { type: "json_schema", name: "workflow_output", schema: opts.schema.adapterSchema, strict: true } },
       parallel_tool_calls: false,
       previous_response_id: opts.threadId,
-    } as any);
+    } as any, { signal: runtime.signal } as any);
     const parsed = response.output_parsed ?? extractParsedResponse(response);
     return {
       finalResponse: JSON.stringify(parsed),
