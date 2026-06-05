@@ -38,7 +38,11 @@
     "engine",
     "adapters",
     "codex-skill",
-    "README.md"
+    "README.md",
+    "examples",
+    "docs",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --import tsx --test tests/*.test.ts",

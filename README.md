@@ -7,11 +7,12 @@ You don't write workflow files. You install a skill, then just talk to Codex.
 ## 30-second start
 
 ```bash
-npm install -g codex-flow      # installs the `codex-flow` CLI
-codex-flow install-codex       # installs the "dynamic-workflow" skill into Codex
+npm install -g github:Dmatut7/codex-flow  # installs the `codex-flow` CLI
+codex-flow install-codex                # installs the "dynamic-workflow" skill into Codex
 # restart Codex
 ```
 
+After the npm package is published, the install command becomes `npm install -g codex-flow`.
 `dongt` remains as a compatibility alias, but the public package and docs use `codex-flow`.
 
 Then, in **any** project, just tell Codex:
@@ -123,3 +124,5 @@ npm test            # FakeAdapter only, no network
 ```
 
 Regression suite covers keyed replay, dependency-subtree invalidation, schema repair, transient retry, writable-cwd protection, deterministic shadows + stable cache keys, soft-budget skip, crash-residue / non-terminal-repair journal recovery, backend routing, and the CLI (`install-codex` + `run`).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local development rules and [docs/CODEX_FOR_OSS_APPLICATION.md](docs/CODEX_FOR_OSS_APPLICATION.md) for the Codex for Open Source application prep notes.
