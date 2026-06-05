@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/Dmatut7/codex-flow?sort=semver)](https://github.com/Dmatut7/codex-flow/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node >=18](https://img.shields.io/badge/node-%3E%3D18-339933.svg)](package.json)
-[![Codex App / CLI](https://img.shields.io/badge/Codex-App%20%2F%20CLI-111827.svg)](docs/FAQ.md)
+[![Codex App / CLI](https://img.shields.io/badge/Codex-App%20%2F%20CLI-111827.svg)](docs/CODEX_APP_CLI.md)
 
 ![codex-flow banner](assets/codex-flow-banner.svg)
 
@@ -64,7 +64,7 @@ It uses **your Codex / ChatGPT membership login** — no OpenAI API key needed.
 
 If the run is interrupted (Ctrl-C, crash, budget), running it again **resumes**: finished work replays instantly, only unfinished nodes call Codex again.
 
-See the [FAQ](docs/FAQ.md), the [prompt gallery](docs/PROMPTS.md) for copy-paste Codex prompts, and the [maintainer workflow gallery](examples/README.md) for import-free runnable bug investigation, PR review, issue triage, and release smoke workflows. See [docs/POSITIONING.md](docs/POSITIONING.md) for what `codex-flow` is / is not, [ROADMAP.md](ROADMAP.md) for public next steps, and [docs/LAUNCH_PLAYBOOK.md](docs/LAUNCH_PLAYBOOK.md) for sharing / launch copy.
+See [how to use it in Codex App / CLI](docs/CODEX_APP_CLI.md), the [FAQ](docs/FAQ.md), the [prompt gallery](docs/PROMPTS.md) for copy-paste Codex prompts, and the [maintainer workflow gallery](examples/README.md) for import-free runnable bug investigation, PR review, issue triage, and release smoke workflows. See [docs/POSITIONING.md](docs/POSITIONING.md) for what `codex-flow` is / is not, [ROADMAP.md](ROADMAP.md) for public next steps, and [docs/LAUNCH_PLAYBOOK.md](docs/LAUNCH_PLAYBOOK.md) for sharing / launch copy.
 
 ## Why this is more than "an engine"
 

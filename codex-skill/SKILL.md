@@ -21,6 +21,8 @@ If it's a single trivial question or one tiny edit, just answer/do it directly â
 
 ## Steps
 
+0. **Preflight if needed.** If this is the first workflow in the project or the CLI availability is unclear, run `codex-flow doctor`. If `codex-flow` is missing, tell the user to install it with `npm install -g github:Dmatut7/codex-flow` (or `npm install -g codex-flow` after npm publish) and stop.
+
 1. **Restate the goal in one line.** If the input material or output shape is genuinely missing, ask at most ONE necessary question. Otherwise infer and proceed.
 
 2. **Generate a workflow file** at `.codex-flow/generated/<slug>.workflow.ts` (create dirs as needed). Follow `references/engine-api.md` EXACTLY:
@@ -43,4 +45,4 @@ If it's a single trivial question or one tiny edit, just answer/do it directly â
 - **Current project is the workspace.** `codex-flow run` already runs in the user's project directory; read-only agents need no `cwd`.
 - **On failure**, read the error and fix only the generated workflow (e.g. a bad prompt or schema). Do not try to modify the `codex-flow` engine itself.
 
-See `references/engine-api.md` for the exact API and a copy-paste template.
+See `references/engine-api.md` for the exact API and a copy-paste template. Installed setup/troubleshooting reference: `references/setup.md`.

@@ -8,7 +8,7 @@ You only need `OPENAI_API_KEY` if you explicitly choose the optional `openai-res
 
 ## Does this work in Codex App?
 
-Yes. Install the bundled skill once:
+Yes. For the full setup flow, see [Use codex-flow in Codex App or Codex CLI](CODEX_APP_CLI.md). Install the bundled skill once:
 
 ```bash
 codex-flow install-codex

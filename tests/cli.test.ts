@@ -73,6 +73,7 @@ describe("codex-flow cli", () => {
     const text = await readFile(skillMd, "utf8");
     assert.match(text, /name: dynamic-workflow/);
     assert.ok(existsSync(path.join(dir, "dynamic-workflow", "references", "engine-api.md")), "reference should be copied");
+    assert.ok(existsSync(path.join(dir, "dynamic-workflow", "references", "setup.md")), "setup reference should be copied");
     await rm(dir, { recursive: true, force: true });
   });
 
