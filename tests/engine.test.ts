@@ -86,6 +86,41 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("bulkheads AgentResult errors in parallel and pipeline", async () => {
+    const dir = await tempDir();
+    const calls: string[] = [];
+    const engine = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath: path.join(dir, "journal.jsonl"),
+      adapters: {
+        fake: {
+          resolver: async ({ prompt }) => {
+            calls.push(prompt);
+            if (prompt === "bad") throw new Error("terminal fake failure");
+            return { prompt };
+          },
+        },
+      },
+    });
+
+    const parallelResult = await engine.run(async ({ parallel, agent }) => parallel([
+      async () => agent("bad", { backend: "fake" }),
+      async () => agent("good", { backend: "fake" }),
+    ]));
+
+    assert.deepEqual(parallelResult.map((item: any) => item?.output ?? null), [null, { prompt: "good" }]);
+
+    const pipelineResult = await engine.run(async ({ pipeline, agent }) => pipeline(["bad"], 
+      async () => agent("bad", { backend: "fake" }),
+      async () => agent("should-not-run", { backend: "fake" }),
+    ));
+
+    assert.deepEqual(pipelineResult, [null]);
+    assert.equal(calls.includes("should-not-run"), false);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("replays by keyed journal and only invalidates the changed pipeline subtree", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");

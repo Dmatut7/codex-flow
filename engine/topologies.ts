@@ -15,6 +15,7 @@ export function makeTopologies(runtime: EngineRuntime) {
       const out = results.map((result) => {
         if (result.status === "fulfilled") {
           keys.push(result.value.key);
+          if (isErrorAgentResult(result.value.value)) return null;
           return result.value.value;
         }
         keys.push(null);
@@ -34,6 +35,7 @@ export function makeTopologies(runtime: EngineRuntime) {
           const child = runtime.makeChildScope({ currentPrevKey: itemKey, itemIdx, stageIdx, topologyPath: [...parent.topologyPath, `pipeline:${itemIdx}:${stageIdx}`] });
           const itemCtx: ItemCtx = { itemIdx, stageIdx, cwd: child.cwd };
           const value = await runtime.withScope(child, () => stages[stageIdx](prev, itemCtx));
+          if (value === null || isErrorAgentResult(value)) return { value: null as O | null, key: child.currentPrevKey };
           prev = value;
           itemKey = child.currentPrevKey;
         }
@@ -60,4 +62,8 @@ export function makeTopologies(runtime: EngineRuntime) {
       return result;
     },
   };
+}
+
+function isErrorAgentResult(value: unknown): boolean {
+  return Boolean(value && typeof value === "object" && (value as { status?: unknown }).status === "error");
 }
