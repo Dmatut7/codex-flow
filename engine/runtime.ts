@@ -13,6 +13,7 @@ export interface Scope {
   parallelIdx?: number;
   itemIdx?: number;
   stageIdx?: number;
+  topologyPath: string[];
   cwd?: string;
 }
 
@@ -41,6 +42,7 @@ export function makeScope(parent?: Scope, overrides: Partial<Scope> = {}): Scope
     parallelIdx: overrides.parallelIdx,
     itemIdx: overrides.itemIdx,
     stageIdx: overrides.stageIdx,
+    topologyPath: overrides.topologyPath ?? [...(parent?.topologyPath ?? [])],
     cwd: overrides.cwd,
   };
 }

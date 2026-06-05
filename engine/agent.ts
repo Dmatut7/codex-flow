@@ -139,6 +139,7 @@ function allocateStructuralPosition(scope: Scope, nodeKey?: string): StructuralP
     parallelIdx: scope.parallelIdx,
     itemIdx: scope.itemIdx,
     stageIdx: scope.stageIdx,
+    topologyPath: scope.topologyPath.length > 1 ? [...scope.topologyPath] : undefined,
     callOrdinal,
     nodeKey,
   };

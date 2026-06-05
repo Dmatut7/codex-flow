@@ -8,7 +8,7 @@ export function makeTopologies(runtime: EngineRuntime) {
       const parent = runtime.currentScope();
       const parentPrev = parent.currentPrevKey;
       const results = await Promise.allSettled(thunks.map((thunk, idx) => {
-        const child = runtime.makeChildScope({ currentPrevKey: parentPrev, parallelIdx: idx });
+        const child = runtime.makeChildScope({ currentPrevKey: parentPrev, parallelIdx: idx, topologyPath: [...parent.topologyPath, `parallel:${idx}`] });
         return runtime.withScope(child, thunk).then((value) => ({ value, key: child.currentPrevKey }));
       }));
       const keys: Array<string | null> = [];
@@ -31,7 +31,7 @@ export function makeTopologies(runtime: EngineRuntime) {
         let prev: any = item;
         let itemKey: string | null = parentPrev;
         for (let stageIdx = 0; stageIdx < stages.length; stageIdx++) {
-          const child = runtime.makeChildScope({ currentPrevKey: itemKey, itemIdx, stageIdx });
+          const child = runtime.makeChildScope({ currentPrevKey: itemKey, itemIdx, stageIdx, topologyPath: [...parent.topologyPath, `pipeline:${itemIdx}:${stageIdx}`] });
           const itemCtx: ItemCtx = { itemIdx, stageIdx, cwd: child.cwd };
           const value = await runtime.withScope(child, () => stages[stageIdx](prev, itemCtx));
           prev = value;

@@ -100,6 +100,7 @@ export interface StructuralPosition {
   parallelIdx?: number;
   itemIdx?: number;
   stageIdx?: number;
+  topologyPath?: string[];
   callOrdinal: number;
   nodeKey?: string;
 }

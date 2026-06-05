@@ -125,6 +125,42 @@ describe("dynamic workflow engine", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("replays nested parallel nodes without cache-key aliasing", async () => {
+    const dir = await tempDir();
+    const journalPath = path.join(dir, "journal.jsonl");
+    const workflow = async ({ parallel, agent }: any) => parallel(["outer-a", "outer-b"].map((outer: string) => async () => {
+      const [inner] = await parallel([
+        async () => (await agent("same nested prompt", { backend: "fake" })).output,
+      ]);
+      return { outer, inner };
+    }));
+
+    const first = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [{ value: "a" }, { value: "b" }] } },
+    });
+    const firstResult = await first.run(workflow);
+
+    assert.deepEqual(firstResult, [
+      { outer: "outer-a", inner: { value: "a" } },
+      { outer: "outer-b", inner: { value: "b" } },
+    ]);
+
+    const replay = createEngine({
+      defaultBackend: "fake",
+      autoRoute: false,
+      journalPath,
+      adapters: { fake: { responses: [] } },
+    });
+    const replayResult = await replay.run(workflow);
+
+    assert.deepEqual(replayResult, firstResult);
+    assert.equal(replay.adapters.fake.calls.length, 0);
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("repairs invalid schema output under the same cache key", async () => {
     const dir = await tempDir();
     const journalPath = path.join(dir, "journal.jsonl");
